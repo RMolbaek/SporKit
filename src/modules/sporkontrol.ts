@@ -1,5 +1,5 @@
 import { versine, radiusFromVersine, equilibriumCant, maxSpeed } from '../core/formulas';
-import { BANEDANMARK as rs, loadSettings } from '../core/rules';
+import { BANEDANMARK as rs, loadSettings, projekteretSporvidde, sporudvidelse } from '../core/rules';
 import { tsiGaugeIal, tsiStatus, TSI_KILDE } from '../core/tsi';
 import { kvalitetsklasse, vridningKlasse, sporviddeKlasse, lavVridMax, radiusFraDiagram, vridGraense, SPORVIDDE, type Base } from '../core/bn138';
 import { setReport } from '../core/report';
@@ -38,12 +38,14 @@ export const sporkontrol: Module = {
       const lav = lavVridMax(Rm, st.hm);
       const vk = baseStd ? vridningKlasse(tw, kk, baseStd, lav) : null;
       const vg = baseStd ? vridGraense(kk, baseStd) : null;
-      const gk = st.sv > 0 ? sporviddeKlasse(st.sv, kk) : null;
+      const Gproj = projekteretSporvidde(st.R, set.sporvidde);
+      const udv = sporudvidelse(st.R);
+      const gk = st.sv > 0 ? sporviddeKlasse(st.sv, kk, Gproj) : null;
       const sg = SPORVIDDE[kk];
       const Rdiag = st.p > 0 ? radiusFraDiagram(st.p) : NaN;
       const bnRows = [
         ...(vk && vg ? [{ label: `Målt vridning over ${fmt(st.b, 1)} m (kvalitetsklasse ${kk})`, value: `${fmt(tw, 2)} mm/m`, graense: `${vg.fk3 !== undefined ? `fk 3 ${fmt(vg.fk3, 1)} · ` : ''}fk 4 ${fmt(vg.fk4, 1)} · Max ${fmt(vk.max, 1)}`, status: vk.status, tekst: vk.status === 'ok' ? undefined : `Fejlkl. ${vk.fejlklasse}`, kilde: `BN1-38-6 tabel 11.3.2-1${lav ? ', skærpet Max (afsnit 17)' : ''}` }] : []),
-        ...(gk ? [{ label: `Målt sporvidde (kvalitetsklasse ${kk})`, value: `${fmt(st.sv)} mm (${st.sv - 1435 >= 0 ? '+' : ''}${fmt(st.sv - 1435)})`, graense: `fk 4 +${sg.fk4[0]}/−${sg.fk4[1]} · Max +${sg.max[0]}/−${sg.max[1]}`, status: gk.status, tekst: gk.status === 'ok' ? undefined : `Fejlkl. ${gk.fejlklasse}`, kilde: 'BN1-38-6 tabel 11.3.2-2' }] : []),
+        ...(gk ? [{ label: `Målt sporvidde (kvalitetsklasse ${kk})`, value: `${fmt(st.sv)} mm (${st.sv - Gproj >= 0 ? '+' : ''}${fmt(st.sv - Gproj)} ift. ${fmt(Gproj)})`, graense: `projekteret ${fmt(Gproj)}${udv ? ` (1435 + ${udv})` : ''} · fk 4 +${sg.fk4[0]}/−${sg.fk4[1]} · Max +${sg.max[0]}/−${sg.max[1]}`, status: gk.status, tekst: gk.status === 'ok' ? undefined : `Fejlkl. ${gk.fejlklasse}`, kilde: 'BN1-38-6 tabel 11.3.2-2' }] : []),
       ];
       const bases = [10, 20].map((c) => ({ c, f: versine(st.R, c) }));
       out.innerHTML = `
@@ -61,10 +63,11 @@ export const sporkontrol: Module = {
         ${results([
           { symbol: 'v', label: `Vridning over ${fmt(st.b, 1)} m`, value: fmt(tw, 2), unit: 'mm/m', big: true, sub: `|h₁ − h₂| / b = ${fmt(twSum)} mm / ${fmt(st.b, 1)} m` },
         ])}
-        ${bn138Block(bnRows, `Kvalitetsklasse ${kk} ud fra V = ${st.Vs} km/t. ${baseStd ? '' : 'Vridning vurderes kun for standardmålebaserne 1,5/2, 2,5/3, 6, 9, 12 og 15 m. '}Grænserne er for målevogn/-dræsine; for håndmåling se tabel 11.3.3.`)}
+        ${bn138Block(bnRows, `Kvalitetsklasse ${kk} ud fra V = ${st.Vs} km/t. ${baseStd ? '' : 'Vridning vurderes kun for standardmålebaserne 1,5/2, 2,5/3, 6, 9, 12 og 15 m. '}Grænserne er for målevogn/-dræsine; for håndmåling se tabel 11.3.3. Plus-tolerancer i fejlklasse 3, 4 og Max regnes altid fra 1435 mm, øvrige fra den projekterede sporvidde (fodnote 5 og 10).`)}
         ${st.p > 0 ? `<h3>Radius fra målevognsdiagram</h3>${results([{ symbol: 'R', label: `Pilhøjde p = ${fmt(st.p, 1)} mm på diagrammet`, value: fmt(Rdiag), unit: 'm', sub: 'R = 10 000 / p (BN1-38 afsnit 17)' }])}` : ''}
-        <h3>Sporvidde – grænse for øjeblikkeligt indgreb</h3>
-        ${results([{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
+        <h3>Sporvidde</h3>
+        ${results([
+          { symbol: 'G<sub>proj</sub>', label: `Projekteret sporvidde ved R = ${fmt(st.R)} m`, value: fmt(Gproj), unit: 'mm', sub: udv ? `1435 + sporudvidelse ${udv} mm (Sporregler 2.12)` : `ingen sporudvidelse (R ≥ 190 m)${set.sporvidde === 1437 ? ' · TEN: 1437 mm' : ''}` },{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
         ${tsiBlock(tsiRows)}
         <p class="tip">Målebaser iht. BN1-38: 1½ eller 2, 2½ eller 3, 6, 9, 12 og 15 m. Grænseværdier for vridning afhænger af fejlklasse og findes i BN1-38. Eksempel fra Sporteknik: h₁ = 55, h₂ = 40, b = 3 m → 5 mm/m.</p>
       `;

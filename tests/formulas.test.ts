@@ -311,3 +311,53 @@ describe('BN1-38-6', () => {
     expect(radiusFraDiagram(10)).toBe(1000);
   });
 });
+
+import { sporudvidelse, projekteretSporvidde } from '../src/core/rules';
+
+describe('Sporudvidelse (Sporregler 2.12)', () => {
+  it('tabelværdier', () => {
+    expect(sporudvidelse(0)).toBe(0);
+    expect(sporudvidelse(190)).toBe(0);
+    expect(sporudvidelse(180)).toBe(5);
+    expect(sporudvidelse(175)).toBe(5);
+    expect(sporudvidelse(160)).toBe(10);
+    expect(sporudvidelse(149)).toBe(15);
+    expect(projekteretSporvidde(160, 1437)).toBe(1445);
+    expect(projekteretSporvidde(500, 1437)).toBe(1437);
+  });
+  it('BN1-38 tolerancer regnes fra projekteret sporvidde (minus) og 1435 (plus fk 3/4/Max)', () => {
+    // R = 160: projekteret 1445. 1440 er −5 mm: over fk 1-minus (−3), inden for fk 3-minus (−7)
+    expect(sporviddeKlasse(1440, 'D', 1445).fejlklasse).toBe('1');
+    expect(sporviddeKlasse(1437, 'D', 1445).fejlklasse).toBe('4');
+    expect(sporviddeKlasse(1444, 'D', 1445).fejlklasse).toBe('inden for 0');
+    expect(sporviddeKlasse(1466, 'D', 1445).fejlklasse).toBe('4');
+  });
+});
+
+import { breddeforoegelse, breddeforoegelseVed, hoejdeaendring, omkringSkinnen, profilType } from '../src/core/fritrum';
+
+describe('BN1-166-1 fritrum', () => {
+  it('breddeforøgelse e (formel 12.1/12.2) er kontinuert ved R = 250', () => {
+    expect(breddeforoegelse(250)).toBeCloseTo(15, 6);
+    expect(breddeforoegelse(249.999)).toBeCloseTo(15, 2);
+    expect(breddeforoegelse(150)).toBeCloseTo(175, 6);
+    expect(breddeforoegelse(280)).toBeCloseTo(3750 / 280, 6);
+    expect(breddeforoegelse(300)).toBe(0);
+    expect(breddeforoegelse(140)).toBeNull();
+  });
+  it('forløb langs sporet (fig. 12-2, 12-3, 12-6)', () => {
+    expect(breddeforoegelseVed(-7, 200, 0)).toBeCloseTo(((60000 / 200 - 225) * 5) / 10, 6);
+    expect(breddeforoegelseVed(-2, 200, 0)).toBeCloseTo(75, 6);
+    expect(breddeforoegelseVed(-1, 280, 0)).toBe(0);
+    expect(breddeforoegelseVed(-20, 200, 40)).toBeCloseTo(37.5, 6);
+  });
+  it('højdeændring, rummet om skinnen og profiltype', () => {
+    expect(hoejdeaendring(5000)).toBe(10);
+    expect(hoejdeaendring(12000)).toBe(0);
+    expect(hoejdeaendring(400)).toBeNull();
+    expect(omkringSkinnen(160).nOevrig).toBe(80);
+    expect(profilType('P1')).toBe('D-GC');
+    expect(profilType('P3')).toBe('D');
+    expect(profilType('S')).toBe('SD');
+  });
+});

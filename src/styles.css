@@ -263,6 +263,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .viz .pf-ballast { fill: #a7a294; stroke: #6d6a60; stroke-width: 4; }
 .viz .t-ghost-r { fill: none; stroke: var(--muted); stroke-width: 5; stroke-dasharray: 20 14; }
 .viz-zone { max-width: 680px; }
+.viz-small { max-width: 460px; }
 .viz .z-track { fill: #a7a294; }
 .viz .z-rail { stroke: #4f5961; stroke-width: 6; }
 .viz .z-sik { fill: color-mix(in srgb, var(--bad) 22%, var(--surface)); }

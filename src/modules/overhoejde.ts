@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, vurder, samletStatus, limitI, loadSettings } from '../core/rules';
+import { BANEDANMARK as rs, vurder, samletStatus, limitI, loadSettings, projekteretSporvidde, sporudvidelse } from '../core/rules';
 import {
   cantConstant, equilibriumCant, cantDeficiency, cantExcess, lateralAcceleration, cantWindow, roundTo,
 } from '../core/formulas';
@@ -87,6 +87,7 @@ export const overhoejde: Module = {
           { symbol: 'a<sub>q</sub>', label: 'Ukompenseret sideacceleration', value: fmt(aq, 2), unit: 'm/s²',
             sub: '1,0 m/s² svarer til 153 mm' },
           { symbol: 'h<sub>a,min</sub>', label: 'Afbalanceret for V<sub>min</sub>', value: fmt(heqMin), unit: 'mm' },
+          { symbol: 'G', label: 'Projekteret sporvidde', value: fmt(projekteretSporvidde(st.R, set.sporvidde)), unit: 'mm', sub: sporudvidelse(st.R) ? `1435 + ${sporudvidelse(st.R)} mm sporudvidelse (Sporregler 2.12)` : 'ingen sporudvidelse (R ≥ 190 m)' },
         ])}
         <div class="window">
           <div class="window-head">

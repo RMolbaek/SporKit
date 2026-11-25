@@ -35,10 +35,12 @@ export interface Settings {
   tsiSpor: 'ballast' | 'fast';
   /** Nyanlæg (TSI-krav for nye strækninger gælder) */
   nyStraekning: boolean;
+  /** Projekteret sporvidde på ret spor og R ≥ 190 m (1437 mm på TEN-strækninger) */
+  sporvidde: 1435 | 1437;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  skinne: '60E2', saerligeTogsaet: false, tsi: true, tsiTrafik: 'blandet', tsiSpor: 'ballast', nyStraekning: false,
+  skinne: '60E2', saerligeTogsaet: false, tsi: true, tsiTrafik: 'blandet', tsiSpor: 'ballast', nyStraekning: false, sporvidde: 1435,
 };
 
 export interface RuleSet {
@@ -238,4 +240,30 @@ export function loadSettings(): Settings {
 }
 export function saveSettings(s: Settings): void {
   try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch { /* */ }
+}
+
+/* ------------------------------ sporudvidelse ------------------------------ */
+
+/**
+ * Sporudvidelse i små kurver, Sporregler afsn. 2.12 (gengivet i Sporteknik 2016, s. 254).
+ * Bemærk: Sporteknik skriver i teksten «kun ved R ≤ 175 m», men tabellen giver +5 mm for 175 ≤ R < 190 m.
+ * SporKit følger tabellen.
+ */
+export const SPORUDVIDELSE: { fra: number; til: number; mm: number }[] = [
+  { fra: 190, til: Infinity, mm: 0 },
+  { fra: 175, til: 190, mm: 5 },
+  { fra: 150, til: 175, mm: 10 },
+  { fra: 0, til: 150, mm: 15 },
+];
+
+export function sporudvidelse(R: number): number {
+  if (!(R > 0)) return 0; // ret spor
+  return SPORUDVIDELSE.find((x) => R >= x.fra && R < x.til)?.mm ?? 0;
+}
+
+/** Projekteret sporvidde [mm] = nominel (1435/1437) + sporudvidelse. */
+export function projekteretSporvidde(R: number, nominel: 1435 | 1437 = 1435): number {
+  const u = sporudvidelse(R);
+  // Sporudvidelsen regnes fra 1435 mm; 1437 mm gælder kun på ret spor og R ≥ 190 m (BN1-38 fodnote 10)
+  return u > 0 ? 1435 + u : nominel;
 }

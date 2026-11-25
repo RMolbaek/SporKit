@@ -72,16 +72,23 @@ export const SPORVIDDE: Record<Kvalitetsklasse, { fk0: number; fk1: [number, num
   S: { fk0: 3, fk1: [7, 3], fk3: [25, 7], fk4: [30, 7], max: [35, 9] },
 };
 
-/** Vurdér en målt sporvidde: returnerer den højeste fejlklasse, der overskrides. */
-export function sporviddeKlasse(G: number, k: Kvalitetsklasse, nominel = 1435): { fejlklasse: string; status: Status } {
-  const d = G - nominel;
+/**
+ * Vurdér en målt sporvidde: returnerer den højeste fejlklasse, der overskrides.
+ * projekteret = 1435/1437 + evt. sporudvidelse. Fodnote 5 og 10 i tabel 11.3.2-2:
+ *  - plustolerancer i fk 0/1 og alle minustolerancer regnes fra den projekterede sporvidde,
+ *  - plustolerancer i fk 3, 4 og Max regnes altid fra 1435 mm.
+ */
+export function sporviddeKlasse(G: number, k: Kvalitetsklasse, projekteret = 1435): { fejlklasse: string; status: Status } {
+  const dP = G - projekteret; // mod projekteret
+  const d35 = G - 1435; // mod 1435
   const t = SPORVIDDE[k];
-  const ud = (g: [number, number]) => d > g[0] || d < -g[1];
-  if (ud(t.max)) return { fejlklasse: 'Max/Min', status: 'overskredet' };
-  if (ud(t.fk4)) return { fejlklasse: '4', status: 'overskredet' };
-  if (ud(t.fk3)) return { fejlklasse: '3', status: 'undtagelse' };
-  if (ud(t.fk1)) return { fejlklasse: '1', status: 'undtagelse' };
-  if (Math.abs(d) > t.fk0) return { fejlklasse: '0', status: 'ok' };
+  const udHoej = (g: [number, number]) => d35 > g[0] || dP < -g[1];
+  const udLav = (g: [number, number]) => dP > g[0] || dP < -g[1];
+  if (udHoej(t.max)) return { fejlklasse: 'Max/Min', status: 'overskredet' };
+  if (udHoej(t.fk4)) return { fejlklasse: '4', status: 'overskredet' };
+  if (udHoej(t.fk3)) return { fejlklasse: '3', status: 'undtagelse' };
+  if (udLav(t.fk1)) return { fejlklasse: '1', status: 'undtagelse' };
+  if (Math.abs(dP) > t.fk0) return { fejlklasse: '0', status: 'ok' };
   return { fejlklasse: 'inden for 0', status: 'ok' };
 }
 

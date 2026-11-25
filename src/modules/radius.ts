@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, limitI, loadSettings } from '../core/rules';
+import { BANEDANMARK as rs, limitI, loadSettings, sporudvidelse } from '../core/rules';
 import { minRadius, minRadiusMixed, roundTo, cantConstant } from '../core/formulas';
 import { setReport } from '../core/report';
 import { tsiCantDeficiency, tsiCantMax, tsiStatus, TSI_KILDE, TSI_R_MIN, TSI_CANT_DEFICIENCY_WAG } from '../core/tsi';
@@ -53,6 +53,7 @@ export const radius: Module = {
         ])}
         <p class="tip">Ved blandet trafik skal én overhøjde give I ≤ I<sub>max</sub> for de hurtige tog og E ≤ E<sub>max</sub> for de langsomme.
         Sæt V<sub>min</sub> = V for ren persontrafik. Langskinnespor har desuden mindste radius efter overbygning, fx UIC60 Dmp 400 m og UIC60 Dt 700 m (BN1-66). Radier over ${fmt(rs.radiusRetSpor)} m regnes som ret spor.</p>
+        ${mN.R < 190 ? `<p class="tip">R < 190 m: sporet skal have sporudvidelse på ${sporudvidelse(mN.R)} mm (Sporregler 2.12).</p>` : ''}
         ${tsiBlock(tsiRows, 'Modvendte kurver med små radier på nye strækninger skal udformes, så bufferlåsning undgås; mellemliggende retlinje efter EN 13803 tabel N.1/N.2 (TSI 4.2.3.4(2)).')}
       `;
       setReport({

@@ -113,6 +113,16 @@ export const REFERENCES: Reference[] = [
     gennemgaaet: false,
   },
   {
+    id: 'BN1-166',
+    kort: 'BN1-166-1',
+    titel: 'Fritrumsprofiler, læsseprofil og kinematiske referencelinjer (udgivet 03.02.2025)',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Breddeforøgelse e i kurver (formel 12.1/12.2), højdeændring i afrundingskurver (formel 13.1), vedligeholdelsestillæg (tabel 10.4-1), fritrum omkring skinnen (afsnit 14) og profiltype D/D-GC/SD.',
+    url: 'https://www.bane.dk/leverandoer/krav/-/media/FCA33F860B424734AB5C543BFB437865.ashx',
+    gennemgaaet: true,
+  },
+  {
     id: 'BN2-93',
     kort: 'BN2-93-1',
     titel: 'Absolut beliggenhed og fast afmærkning af sporets tracé (udgivet 01.03.2011)',
@@ -147,6 +157,15 @@ export const REFERENCES: Reference[] = [
     udgiver: 'CEN / Dansk Standard',
     type: 'Europæisk standard',
     anvendelse: 'Skinneprofil 60E2 (mål i tværsnitstegningen).',
+    gennemgaaet: false,
+  },
+  {
+    id: 'EN15273',
+    kort: 'DS/EN 15273-1…3',
+    titel: 'Railway applications – Gauges (del 1: generelt, del 2: rullende materiel, del 3: fritrumsprofiler)',
+    udgiver: 'CEN / Dansk Standard',
+    type: 'Europæisk standard',
+    anvendelse: 'Profilberegning ved R < 150 m og R<sub>v</sub> < 500 m; installationsgrænse for sporafstand og perronafstand (TSI).',
     gennemgaaet: false,
   },
   {

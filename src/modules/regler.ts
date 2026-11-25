@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, type Limit, loadSettings, saveSettings } from '../core/rules';
+import { BANEDANMARK as rs, type Limit, loadSettings, saveSettings, SPORUDVIDELSE } from '../core/rules';
 import { cantConstant } from '../core/formulas';
 import { setReport } from '../core/report';
 import { card, fmt, h, kildeChip, select, type Module } from '../ui/dom';
@@ -14,7 +14,7 @@ export const regler: Module = {
     const set = loadSettings();
     const st = {
       skinne: set.skinne as string, saerlige: set.saerligeTogsaet ? 'ja' : 'nej',
-      tsi: set.tsi ? 'ja' : 'nej', trafik: set.tsiTrafik as string, spor: set.tsiSpor as string, ny: set.nyStraekning ? 'ja' : 'nej',
+      tsi: set.tsi ? 'ja' : 'nej', sv: String(set.sporvidde), trafik: set.tsiTrafik as string, spor: set.tsiSpor as string, ny: set.nyStraekning ? 'ja' : 'nej',
     };
     const limits: Limit[] = [
       rs.overhoejdeMax, rs.manglendeOverhoejdeMax, rs.manglendeOverhoejdeSporskifte, rs.overskydendeOverhoejdeMax,
@@ -24,12 +24,13 @@ export const regler: Module = {
     const save = () => {
       saveSettings({
         skinne: st.skinne as '60E2' | 'DSB45', saerligeTogsaet: st.saerlige === 'ja',
-        tsi: st.tsi === 'ja', tsiTrafik: st.trafik as 'blandet' | 'person', tsiSpor: st.spor as 'ballast' | 'fast', nyStraekning: st.ny === 'ja',
+        tsi: st.tsi === 'ja', tsiTrafik: st.trafik as 'blandet' | 'person', tsiSpor: st.spor as 'ballast' | 'fast', nyStraekning: st.ny === 'ja', sporvidde: st.sv === '1437' ? 1437 : 1435,
       });
     };
     const settings = h('div', { class: 'fields' },
       select('Skinneprofil', 'skinne', [['60E2', '60E2 / DSB60 (A ≤ 22,5 t)'], ['DSB45', 'DSB45 (45E2)']], st, save),
       select('Særlige togsæt (I ≤ 160 mm)', 'saerlige', [['nej', 'Nej'], ['ja', 'Ja']], st, save),
+      select('Projekteret sporvidde (R ≥ 190 m)', 'sv', [['1435', '1435 mm'], ['1437', '1437 mm (TEN-strækninger, S16)']], st, save),
       h('div', { class: 'settings-sep' }, 'TSI INF'),
       select('Kontrollér også mod TSI INF', 'tsi', [['ja', 'Ja'], ['nej', 'Nej']], st, save),
       select('Trafik (TSI tabel 7)', 'trafik', [['blandet', 'Blandet trafik / gods'], ['person', 'Ren persontrafik']], st, save),
@@ -59,6 +60,10 @@ export const regler: Module = {
         <li>C = e / (g·3,6²) = <strong>${fmt(cantConstant(rs), 3)}</strong> → h<sub>a</sub> = C·V²/R</li>
         <li>Radier over <strong>${fmt(rs.radiusRetSpor)} m</strong> regnes som ret spor</li>
       </ul>
+      <h3>Sporudvidelse (Sporregler afsn. 2.12)</h3>
+      <table class="tbl tbl-mini"><thead><tr><th>Radius [m]</th><th>Sporudvidelse [mm]</th><th>Projekteret sporvidde [mm]</th></tr></thead>
+        <tbody>${SPORUDVIDELSE.map((x) => `<tr><td>${x.til === Infinity ? `R ≥ ${x.fra}` : x.fra === 0 ? `R < ${x.til}` : `${x.fra} ≤ R < ${x.til}`}</td><td>+${x.mm}</td><td>${x.mm ? 1435 + x.mm : '1435 / 1437'}</td></tr>`).join('')}</tbody></table>
+      <p class="tip">Gengivet fra Sporteknik (2016) s. 254 · sekundær kilde. Teksten dér nævner «kun ved R ≤ 175 m», mens tabellen giver +5 mm ved 175 ≤ R < 190 m; SporKit følger tabellen. Hvordan udvidelsen indføres på langs (udløb), er ikke gengivet.</p>
       <h3>Status i beregningerne</h3>
       <ul class="consts">
         <li><span class="chip chip-ok">OK</span> inden for normalbestemmelsen</li>

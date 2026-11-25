@@ -21,7 +21,7 @@ export const kurveudvidelse: Module = {
       const o = overhang(st.R, st.a, st.Lv, st.H, st.h, rs);
       const ind = o.indvendig + o.haeldning;
       out.innerHTML = `
-        <div class="notice"><strong>Overslag:</strong> Rent geometrisk beregning (uden sidespil, krængning og dynamik). Gældende krav til sporafstand og frirum findes i BN1-154 og frirumsprofilerne.</div>
+        <div class="notice"><strong>Overslag:</strong> Rent geometrisk beregning (uden sidespil, krængning og dynamik). Gældende krav til sporafstand og fritrum findes i BN1-154 og BN1-166 (se modulet «Fritrum» for den normerede breddeforøgelse e).</div>
         ${results([
           { symbol: 'e<sub>i</sub>', label: 'Udbøjning indad (vognmidte)', value: fmt(o.indvendig, 0), unit: 'mm', big: true, sub: 'e<sub>i</sub> = a²/(8R)' },
           { symbol: 'e<sub>y</sub>', label: 'Udbøjning udad (vognende)', value: fmt(o.udvendig, 0), unit: 'mm', big: true, sub: 'e<sub>y</sub> = (L<sub>v</sub>² − a²)/(8R)' },
