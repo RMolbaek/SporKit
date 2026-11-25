@@ -77,12 +77,13 @@ export const REFERENCES: Reference[] = [
   },
   {
     id: 'BN1-6',
-    kort: 'BN1-6',
-    titel: 'Tværprofiler for ballasteret spor',
+    kort: 'BN1-6-7',
+    titel: 'Tværprofiler for ballasteret spor (udgivet 01.04.2023)',
     udgiver: 'Banedanmark',
     type: 'Banenorm',
-    anvendelse: 'Ballastskulder, ballast- og underballasttykkelse, planum – anvendt i tegningen af tværprofilet.',
-    gennemgaaet: false,
+    anvendelse: 'Krav til Bsk, a, Bt, Ut, Pb, Xp og Xrp ved nyanlæg (fig. 15.1-3), sporfornyelse (fig. 12.1-4) og BN1-minimum (fig. 10.2.3-2), forhøjet ballastskulder, sænket ballast ved V > 160 km/t.',
+    url: 'https://bane.dk/Leverandoer/Krav/-/media/D182D206F03B4955808C7448FF6B8CC7.ashx',
+    gennemgaaet: true,
   },
   {
     id: 'BN1-66',

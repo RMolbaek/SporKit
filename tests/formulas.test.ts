@@ -361,3 +361,32 @@ describe('BN1-166-1 fritrum', () => {
     expect(profilType('S')).toBe('SD');
   });
 });
+
+import { krav, forhoejetSkulder, geometri, areal, SVELLE_DATA } from '../src/core/bn16';
+
+describe('BN1-6-7 tværprofil', () => {
+  const base = { sidespor: false, A: 22.5, svelle: 'S99' as const, L: 2500, ls60: true, R: 0, h: 0 };
+  it('krav fra figur 15.1-3, 12.1-4 og 10.2.3-2', () => {
+    const n = krav({ ...base, projekt: 'nyanlaeg', V: 180 });
+    expect([n.Bsk, n.Bt, n.Ut, n.Pb]).toEqual([0.55, 0.35, 0.40, 3.80]);
+    expect(krav({ ...base, projekt: 'nyanlaeg', V: 100 }).Pb).toBe(3.30);
+    const f = krav({ ...base, projekt: 'fornyelse', V: 140, R: 600, h: 100, A: 25 });
+    expect(f.Ut).toBeCloseTo(0.27, 6);
+    expect(f.PbYderTillaeg).toBe(0.30);
+    expect(krav({ ...base, projekt: 'bn1', V: 180, svelle: 'toblok', L: 2300 }).Bsk).toBe(0.40);
+    expect(krav({ ...base, projekt: 'bn1', V: 180, svelle: 'toblok', L: 2300 }).Ut).toBeCloseTo(0.35, 6);
+    expect(forhoejetSkulder({ ...base, V: 120, R: 380 })).toBe(true);
+    expect(forhoejetSkulder({ ...base, V: 120, R: 420 })).toBe(false);
+    expect(forhoejetSkulder({ ...base, svelle: 'S16', V: 120, R: 380 })).toBe(false);
+  });
+  it('geometri: Bt holdes som minimum og ballasten ligger på planum', () => {
+    const p = { Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1, fs: 4.5 };
+    const g = geometri([{ h: 0, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(g.spor[0].btMin).toBeCloseTo(0.3, 6);
+    expect(g.toeR.x).toBeGreaterThan(1.25 + 0.4);
+    expect(g.toeR.x).toBeLessThan(g.edgeR.x);
+    const g2 = geometri([{ h: 100, yder: 1 }, { h: 100, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(Math.min(...g2.spor.map((t) => t.btMin))).toBeCloseTo(0.3, 6);
+    expect(areal(g2.ballast)).toBeGreaterThan(0);
+  });
+});

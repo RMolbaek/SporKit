@@ -17,14 +17,14 @@ const RAIL_PATH =
 const PAD = 10; // mellemlæg (skematisk)
 const INCL = (Math.atan(1 / SKINNE_60E2.haeldning) * 180) / Math.PI;
 
-function rail(xc: number, side: -1 | 1): string {
+export function rail(xc: number, side: -1 | 1): string {
   // side -1 = venstre skinne (hælder mod højre/sporets midte), +1 = højre
   const ang = side === -1 ? INCL : -INCL;
   return `<g transform="translate(${xc},${-PAD}) rotate(${ang.toFixed(3)})">
     <path d="${RAIL_PATH}" class="t-rail"/></g>`;
 }
 
-function fastening(xc: number): string {
+export function fastening(xc: number): string {
   const one = (s: 1 | -1) => {
     const x0 = xc + s * 80;
     const x1 = xc + s * 112;
