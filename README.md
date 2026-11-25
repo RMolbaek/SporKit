@@ -14,6 +14,7 @@
 | Længdeprofil | **Lodret kurve** | T, pilhøjde, a<sub>v</sub>, kontrol af R<sub>v</sub> og stigning |
 | I sporet | **Pilhøjde og vridning** | Pilhøjde ↔ radius, vridning over målebase, hastighed fra målt radius |
 | | **Spor og perron** | Nominel perronafstand og tolerancer efter BN1-49-1 (drift, nyanlæg, fornyelse, sporjustering) |
+| | **Sikkerhedszoner på perron** | Sikkerheds- og opholdszone, mindste perronbredde, afstribning, skilte og passagertæthed efter BN1-9-2 |
 | | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
 | Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
 | Grundlag | **Regelgrundlag / Referencer** | Grænseværdier med kildestatus og referenceliste |

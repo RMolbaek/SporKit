@@ -61,7 +61,8 @@ export function trackCrossSection(o: TrackOpts): string {
   const TL = rot(-half, 0), TR = rot(half, 0), BL = rot(-half, Hs), BR = rot(half, Hs);
   const yF = rot(-rc, Hs).y + TVAERPROFIL.ballast; // underballastens overside
   const sk = TVAERPROFIL.skulder, an = TVAERPROFIL.anlaeg;
-  const shL = { x: TL.x - sk, y: TL.y }, shR = { x: TR.x + sk, y: TR.y };
+  // Ballastskulderen følger sporplanet (svellens overside) og drejes med overhøjden
+  const shL = rot(-half - sk, 0), shR = rot(half + sk, 0);
   const toeL = { x: shL.x - an * (yF - shL.y), y: yF }, toeR = { x: shR.x + an * (yF - shR.y), y: yF };
   const ut = TVAERPROFIL.underballast, ph = TVAERPROFIL.planumHaeldning;
   const planY = (x: number) => yF + ut + ph * Math.abs(x);
@@ -115,6 +116,7 @@ export function trackCrossSection(o: TrackOpts): string {
       ${rail(-rc, -1)}${rail(rc, 1)}
       ${dims ? dimH(-sv.sporvidde / 2, sv.sporvidde / 2, railTop - 120, `Sporvidde ${fmt(sv.sporvidde)}`) : ''}
       ${dims ? dimH(-half, half, Hs + 150, `${sv.id}: L = ${fmt(sv.laengde)}`) : ''}
+      ${dims ? dimH(-half - sk, -half, -90, `Bsk ${TVAERPROFIL.skulder}`) : ''}
     </g>
     ${o.h > 0 ? `<g class="t-ghost">
       <rect x="${rc - 36}" y="${railTop}" width="72" height="${SKINNE_60E2.hoejde}"/>
@@ -128,7 +130,6 @@ export function trackCrossSection(o: TrackOpts): string {
       ${o.h > 0 ? dimV(outerTop.x + 300, py, outerTop.y, `h = ${fmt(o.h)}`) : `<text x="${outerTop.x + 330}" y="${py + 25}" font-size="${T}" class="t-txt">h = 0</text>`}
       ${dimV(rot(-rc, Hs).x, rot(-rc, Hs).y, yF, `Bt ${TVAERPROFIL.ballast}`, 'end')}
       ${dimV(-150, yF, planY(0), `Ut ${TVAERPROFIL.underballast}`, 'start')}
-      ${dimH(shL.x, TL.x, shL.y - 90, `Bsk ${TVAERPROFIL.skulder}`)}
       <text x="${(shL.x + toeL.x) / 2 - 60}" y="${(shL.y + toeL.y) / 2}" text-anchor="end" font-size="${T}" class="t-txt">1:${fmt(an, 1)}</text>
       <text x="${(toeR.x + outR) / 2 - 200}" y="${planY((toeR.x + outR) / 2) - 40}" text-anchor="end" font-size="${T}" class="t-txt">Planum ${fmt(ph * 1000)} ‰</text>
       <text x="${xmin + 60}" y="${ytop + 110}" font-size="${T * 1.15}" class="t-txt t-b">Kurvens inderside</text>

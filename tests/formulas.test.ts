@@ -148,3 +148,32 @@ describe('BN1-49 spor og perron', () => {
     expect(y.lodret).toBeGreaterThan(560);
   });
 });
+
+import { bSik, bOph, bPer, genstandKlasse, afstribningKraeves, opholdsAreal } from '../src/core/sikkerhedszone';
+
+describe('BN1-9-2 sikkerhedszoner', () => {
+  it('bredde af sikkerhedszone (fig. 10.1-1)', () => {
+    expect(bSik(120, 'fjern')).toBe(0.85);
+    expect(bSik(180, 'fjern')).toBe(1.35);
+    expect(bSik(220, 'fjern')).toBeNull();
+    expect(bSik(120, 'sbane')).toBe(0.75);
+  });
+  it('opholdszone og bilag 1 (b_f = b_sik + b_oph)', () => {
+    expect(bOph(160, 'g1')).toBe(1.6);
+    expect(bOph(160, 'g2')).toBe(2.0);
+    expect(bOph(160, 'ingen', true)).toBe(1.6);
+    expect(bSik(180, 'fjern')! + bOph(180, 'g1')!).toBeCloseTo(2.95, 6);
+    expect(bSik(100, 'sbane')! + bOph(100, 'g2')!).toBeCloseTo(2.75, 6);
+  });
+  it('perronbredde og klassifikation', () => {
+    expect(bPer('side', 0.85, 2.0, true, 0.5)).toBeCloseTo(3.35, 6);
+    expect(bPer('oe', 0.85, 2.0, false, 0)).toBeCloseTo(3.7, 6);
+    expect(bPer('oe', 0.85, 2.0, true, 1)).toBeCloseTo(6.7, 6);
+    expect(genstandKlasse(0.5)).toBe('g1');
+    expect(genstandKlasse(4)).toBe('g2');
+    expect(genstandKlasse(12)).toBe('g3');
+    expect(afstribningKraeves(120, false, 'fjern')).toBe(false);
+    expect(afstribningKraeves(180, false, 'fjern')).toBe(true);
+    expect(opholdsAreal(6, 200, 1.7, 40)).toBeCloseTo(820, 6);
+  });
+});

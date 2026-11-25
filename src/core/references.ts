@@ -57,6 +57,16 @@ export const REFERENCES: Reference[] = [
     gennemgaaet: true,
   },
   {
+    id: 'BN1-9',
+    kort: 'BN1-9-2',
+    titel: 'Sikkerheds- og opholdszoner på perroner (udgivet 01.06.2012)',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Bredde af sikkerhedszone (fig. 10.1-1), opholdszone (fig. 11.2-1), perronbredde (fig. 11.1-1), fri højde 2,3 m, passagertæthed, afstribning og skiltning.',
+    url: 'https://sitecore.bane.dk/Leverandoer/Krav/-/media/2CE6350732E9493CA7439A3E7EE64550.ashx',
+    gennemgaaet: true,
+  },
+  {
     id: 'BN1-18',
     kort: 'BN1-18',
     titel: 'Opmåling af genstande inden for profilgrænserne',
@@ -145,6 +155,15 @@ export const REFERENCES: Reference[] = [
     udgiver: 'CEN / Dansk Standard',
     type: 'Europæisk standard',
     anvendelse: 'Tekniske betingelser for betonsveller.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'TSI-PRM',
+    kort: 'TSI PRM',
+    titel: 'Teknisk specifikation for interoperabilitet – tilgængelighed for personer med handicap og bevægelseshæmmede, Forordning (EU) nr. 1300/2014',
+    udgiver: 'Europa-Kommissionen',
+    type: 'EU-forordning',
+    anvendelse: 'Perronbredde, sikkerheds- og opholdszoner, perronafslutning og skiltning (henvist fra BN1-9-2).',
     gennemgaaet: false,
   },
   {
