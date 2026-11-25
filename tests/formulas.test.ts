@@ -412,3 +412,32 @@ describe('BN1-6-7 overgangszoner', () => {
     expect(baerelag({ dybde: 0.3, laengdeFornyelse: 200, sidespor: true, projekt: 'fornyelse' }).kraeves).toBe(false);
   });
 });
+
+import { kryds, krydsDybde, gasAfstande, langs } from '../src/core/bn113';
+
+describe('BN1-13-4 ledningsanlæg', () => {
+  const base = { type: 'kabel' as const, metode: 'styret' as const, D: 0.16, reamer: 0.25, tryk: 0, dybde: 3, vinkel: 0, sporskifte: 50, antal: 1, afstand: 0, groeft: 0, overcut: 10, eksisterende: true, jaevnstroem: false, metal: false, svelleUnderside: 0.388 };
+  it('dybdekrav pr. metode', () => {
+    expect(kryds(base).dybdeKrav).toBeCloseTo(2.75, 6); // 7·0,25 + 1
+    expect(kryds({ ...base, metode: 'pilot', D: 0.1 }).dybdeKrav).toBeCloseTo(2.0, 6);
+    expect(kryds({ ...base, metode: 'presning', D: 0.8 }).dybdeKrav).toBeCloseTo(2.0, 6);
+    expect(kryds({ ...base, metode: 'presning', D: 0.3, type: 'gas', tryk: 6 }).dybdeKrav).toBeCloseTo(2.4, 6);
+    expect(krydsDybde({ ...base, metode: 'aaben', groeft: 1.5 }).map((g) => g.v)).toContain(2.0);
+  });
+  it('kontroller', () => {
+    const r = kryds({ ...base, vinkel: 20, sporskifte: 8, metode: 'styret', D: 0.45 });
+    const bad = r.checks.filter((c) => c.status === 'overskredet').map((c) => c.label);
+    expect(bad).toEqual(expect.arrayContaining(['Krydsningsvinkel (afvigelse fra vinkelret)', 'Afstand til ende af sporskifte/sporskæring', 'Rørdiameter ved styret boring']));
+    expect(kryds({ ...base, metode: 'presning', D: 1.2, dybde: 2.5 }).skinneafstivning.kraeves).toBe(true);
+    expect(kryds({ ...base, dybde: 2, D: 0.2 }).skinneafstivning.laengde).toBeCloseTo(0.2 + 3 * (2.1 - 0.388), 6);
+    expect(gasAfstande(6, 0.3).roerende).toBe(15);
+    expect(gasAfstande(3, 0.3).minAfstandFormel).toBeCloseTo(0.675, 6);
+  });
+  it('langsgående', () => {
+    const l = langs({ a: 3, dybdeSO: 1.0, dybdeTerraen: 0.6, station: false, mellemSpor: false, rende: false, aSkinne: 0, hoejde: 0, Pb: 3.8, V: 160, broend: 2.4, ekstern: false });
+    expect(l.checks.find((c) => c.label.startsWith('Dybde'))!.status).toBe('overskredet');
+    expect(l.checks.find((c) => c.label.startsWith('Brønd'))!.status).toBe('undtagelse');
+    const r = langs({ a: 4, dybdeSO: 0, dybdeTerraen: 0, station: false, mellemSpor: false, rende: true, aSkinne: 3.0, hoejde: 0.25, Pb: 3.8, V: 160, broend: 0, ekstern: false });
+    expect(r.checks.filter((c) => c.status === 'overskredet').length).toBe(2);
+  });
+});

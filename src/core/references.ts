@@ -114,6 +114,16 @@ export const REFERENCES: Reference[] = [
     gennemgaaet: false,
   },
   {
+    id: 'BN1-13',
+    kort: 'BN1-13-4',
+    titel: 'Ledningsanlæg på arealer og under spor, hvor Banedanmark er infrastrukturforvalter (udgivet 23.07.2024)',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Krydsende ledninger: dybde under SO (1,6 m, 10·D + 1, 2,0 m, 7·reamer + 1, gas/olie 2,0/2,4 m), vinkel ≤ 15°, 10 m fra sporskifter, diametergrænser, skinneafstivning; langsgående: ≥ 2,50 m fra spormidte, 1,3 m under SO, kabelrender 2,75/3,25 m; gas/olie-afstande.',
+    url: 'https://www.bane.dk/-/media/Bane/Dokumenter/Leverandoer/Teknisk-dokumentation/Tekniske-normer-og-regler/Banenormer/BN1_13_4.pdf',
+    gennemgaaet: true,
+  },
+  {
     id: 'BN1-166',
     kort: 'BN1-166-1',
     titel: 'Fritrumsprofiler, læsseprofil og kinematiske referencelinjer (udgivet 03.02.2025)',
