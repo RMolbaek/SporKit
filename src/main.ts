@@ -14,6 +14,7 @@ import { tracetavler } from './modules/tracetavler';
 import { fritrum } from './modules/fritrum';
 import { overbygning } from './modules/overbygning';
 import { tvaerprofil } from './modules/tvaerprofil';
+import { overgangszone } from './modules/overgangszone';
 import { regler } from './modules/regler';
 import { tsi } from './modules/tsi';
 import { referencer } from './modules/referencer';
@@ -22,7 +23,7 @@ import { buildReportHtml } from './ui/print';
 
 const MODULES: Module[] = [
   overhoejde, overgangskurve, radius, hastighed, kurveelementer,
-  lodret, sporkontrol, perron, sikkerhedszone, tracetavler, fritrum, kurveudvidelse, overbygning, tvaerprofil, regler, tsi, referencer,
+  lodret, sporkontrol, perron, sikkerhedszone, tracetavler, fritrum, kurveudvidelse, overbygning, tvaerprofil, overgangszone, regler, tsi, referencer,
 ];
 
 const nav = document.querySelector<HTMLElement>('#nav')!;

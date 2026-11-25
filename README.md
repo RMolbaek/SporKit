@@ -20,6 +20,7 @@
 | | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
 | Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
 | | **Tværprofil (BN1-6)** | Interaktivt tværprofil for ét eller to spor med overhøjde; krav efter BN1-6-7 (nyanlæg, sporfornyelse, BN1-minimum), kontrol og mængder |
+| | **Overgangszoner (BN1-6)** | Overgangszoner ved underføringer (Loz, kile, hydraulisk bundet lag, EV2) og mellem nyt og eksisterende bærelag (trin eller jævn ≥ 20 m) |
 | Grundlag | **Regelgrundlag** | Grænseværdier med kildestatus og indstillinger (skinne, TSI-trafik, sportype, nyanlæg) |
 | | **TSI INF** | Alle relevante grænser fra TSI INF (EU) 1299/2014 slået op efter hastighed |
 | | **Referencer** | Referenceliste med anvendelse og gennemgangsstatus |

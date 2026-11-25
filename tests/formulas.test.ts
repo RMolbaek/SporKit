@@ -390,3 +390,25 @@ describe('BN1-6-7 tværprofil', () => {
     expect(areal(g2.ballast)).toBeGreaterThan(0);
   });
 });
+
+import { underfoering, baerelag, ev2Krav } from '../src/core/overgangszone';
+
+describe('BN1-6-7 overgangszoner', () => {
+  it('underføringer', () => {
+    expect(underfoering({ projekt: 'nyanlaeg', V: 100, hyppige: false, geonet: false, saetningsplade: 0, sidespor: false }).type).toBe('trekant');
+    expect(underfoering({ projekt: 'nyanlaeg', V: 140, hyppige: false, geonet: false, saetningsplade: 0, sidespor: false }).Loz).toBe(14);
+    expect(underfoering({ projekt: 'nyanlaeg', V: 180, hyppige: false, geonet: false, saetningsplade: 0, sidespor: false }).Loz).toBe(17);
+    const hs = underfoering({ projekt: 'nyanlaeg', V: 250, hyppige: false, geonet: false, saetningsplade: 0, sidespor: false });
+    expect([hs.Loz, hs.hydrauliskBundet]).toEqual([20, 5]);
+    expect(underfoering({ projekt: 'fornyelse', V: 160, hyppige: true, geonet: true, saetningsplade: 0, sidespor: false }).hoejde).toBe(0.35);
+    expect(underfoering({ projekt: 'fornyelse', V: 160, hyppige: true, geonet: false, saetningsplade: 12, sidespor: false }).type).toBe('ingen');
+    expect(ev2Krav(180)).toBe(115);
+  });
+  it('nyt/eksisterende bærelag', () => {
+    const b = baerelag({ dybde: 0.3, laengdeFornyelse: 200, sidespor: false, projekt: 'fornyelse' });
+    expect([b.kraeves, b.trin, b.Ltrin]).toEqual([true, 2, 6]);
+    expect(b.haeldningJaevn).toBeCloseTo(15, 6);
+    expect(baerelag({ dybde: 0.3, laengdeFornyelse: 8, sidespor: false, projekt: 'fornyelse' }).kraeves).toBe(false);
+    expect(baerelag({ dybde: 0.3, laengdeFornyelse: 200, sidespor: true, projekt: 'fornyelse' }).kraeves).toBe(false);
+  });
+});
