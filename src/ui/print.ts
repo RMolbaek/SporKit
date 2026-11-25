@@ -69,7 +69,7 @@ export function buildReportHtml(r: Report, projekt: { navn: string; sted: string
     <div class="rpt-disc">
       Alle kilder er angivet med tilgængelighed; frit tilgængelige kilder er linket. Grænseværdier markeret som «antaget» har ingen frit tilgængelig dansk kilde og skal kontrolleres. «Sekundær» betyder gengivet
       fra Banedanmarks lærebog <i>Sporteknik</i> (2016), der citerer Sporregler. SporKit er et hjælpeværktøj og
-      erstatter ikke projektering efter gældende banenormer.
+      erstatter ikke projektering efter gældende banenormer. Rapporten er lavet med SporKit (github.com/RMolbaek/SporKit) – kildekode under MIT, indhold under CC BY 4.0.
     </div>
 
     ${(r.sider ?? []).map((side) => `<section class="rpt-page">${uniqueIds(side)}</section>`).join('')}

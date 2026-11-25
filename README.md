@@ -71,3 +71,9 @@ npm run build    # produktionsbygning i dist/
 ```
 
 Teknik: Vite + TypeScript uden UI-framework. Appen er en PWA og virker offline efter første besøg. Ved push til `main` bygges og udgives den automatisk til GitHub Pages via `.github/workflows/deploy.yml` (Pages skal være slået til med kilden "GitHub Actions" under *Settings → Pages*).
+
+## Licens
+
+- **Kildekode:** [MIT](LICENSE) – fri at bruge, ændre og dele.
+- **Tekster, tegninger og rapportindhold:** [CC BY 4.0](LICENSE-CONTENT.md) – fri at dele og bearbejde med kreditering af «SporKit (RMolbaek og bidragydere)».
+- Normer, standarder og forordninger, der henvises til, tilhører deres udgivere (se [LICENSE-CONTENT.md](LICENSE-CONTENT.md)).

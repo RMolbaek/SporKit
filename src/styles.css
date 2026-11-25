@@ -378,7 +378,8 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .lg-n::before { background: var(--ok); }
 .lg-u::before { background: var(--warn); }
 
-.foot { color: var(--muted); font-size: 12px; text-align: center; padding: 28px 0 12px; }
+.foot { color: var(--muted); font-size: 12px; text-align: center; padding: 28px 0 12px; line-height: 1.7; }
+.foot a { color: var(--brand-2); }
 
 /* ---------- spor-tegning ---------- */
 .viz-track { max-width: 760px; padding: 6px; }
