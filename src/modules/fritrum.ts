@@ -1,13 +1,17 @@
 import {
   breddeforoegelse, breddeforoegelseVed, hoejdeaendring, VEDLIGEHOLDELSESTILLAEG, omkringSkinnen, profilType,
+  profilMedTillaeg, fuldtProfil, iPolygon, tilSporplan, TSI_GAUGE, type ProfilNavn,
 } from '../core/fritrum';
+import { profilSvg } from '../ui/profil';
+import { loadSettings } from '../core/rules';
+import { chip } from '../ui/dom';
 import { sporudvidelse } from '../core/rules';
 import { setReport } from '../core/report';
 import { card, fmt, form, h, loadState, results, saveState, select, type Module } from '../ui/dom';
 
-type S = { R: number; okl: number; Rv: number };
-const DEF: S = { R: 220, okl: 0, Rv: 5000 };
-type Opt = { kode: string; spor: string };
+type S = { R: number; okl: number; Rv: number; h: number; gx: number; gz: number };
+const DEF: S = { R: 220, okl: 0, Rv: 5000, h: 100, gx: 0, gz: 0 };
+type Opt = { kode: string; spor: string; yder: string; tillaeg: string };
 
 function forloeb(R: number, okl: number): string {
   const W = 320, H = 150, l = 34, r = 14, t = 22, b = 30;
@@ -36,10 +40,10 @@ export const fritrum: Module = {
   titel: 'Fritrum',
   kort: 'Fritrum',
   ikon: '⬚',
-  beskrivelse: 'Breddeforøgelse i kurver, ændring af højdemål i afrundingskurver, vedligeholdelsestillæg og fritrum omkring skinnen (BN1-166-1).',
+  beskrivelse: 'Fritrumsprofil D, D-GC og SD med overhøjde, breddeforøgelse, højdeændring og vedligeholdelsestillæg – og kontrol af genstande (BN1-166-1, TSI INF 4.2.3.1).',
   render(root) {
     const st = loadState<S>('fritrum', DEF);
-    const opt = loadState<Opt>('fritrum-opt', { kode: 'P3', spor: 'ballast' });
+    const opt = loadState<Opt>('fritrum-opt', { kode: 'P3', spor: 'ballast', yder: '1', tillaeg: 'ja' });
     const out = h('div', { class: 'out' });
     const update = () => {
       saveState('fritrum', st);
@@ -55,6 +59,15 @@ export const fritrum: Module = {
         : st.R <= 250 ? 'vokser lineært fra 12 m før og er fuld 2 m før kurvens begyndelsespunkt (fig. 12-3)'
           : 'skal være til stede ved kurvens begyndelsespunkt (fig. 12-2)';
       const fig = forloeb(st.R, st.okl);
+      const pNavn = prof as ProfilNavn;
+      const tillaeg = { e: e ?? 0, dhRv: dh ?? 0, vandret: opt.tillaeg === 'ja' ? vt.vandret : 0, lodret: opt.tillaeg === 'ja' ? vt.lodret : 0 };
+      const yder = (opt.yder === '-1' ? -1 : 1) as 1 | -1;
+      const harGenstand = st.gx !== 0 || st.gz !== 0;
+      const [gu, gv] = tilSporplan(st.gx, st.gz, st.h, yder);
+      const poly = fuldtProfil(profilMedTillaeg(pNavn, tillaeg));
+      const fri = !iPolygon([gu, gv], poly);
+      const pfig = profilSvg({ navn: pNavn, t: tillaeg, hCant: st.h, yder, genstand: harGenstand ? { x: st.gx, z: st.gz, fri } : null });
+      const set = loadSettings();
       out.innerHTML = `
         <div class="summary summary-${e === null || dh === null ? 'overskredet' : 'ok'}">
           <div><strong>Fritrumsprofil ${prof}</strong><span>Trafikkode ${opt.kode} · ${opt.spor === 'ballast' ? 'ballasteret' : 'fast befæstet'} spor</span></div>
@@ -67,6 +80,11 @@ export const fritrum: Module = {
           { symbol: 'V<sub>t</sub>', label: 'Vedligeholdelsestillæg (projektering)', value: `${vt.vandret} / ${vt.lodret}`, unit: 'mm', sub: 'vandret / lodret (tabel 10.4-1)' },
           { symbol: 'u', label: 'Sporudvidelse (Sporregler 2.12)', value: fmt(sporudvidelse(st.R)), unit: 'mm', sub: 'lægges til mål n omkring skinnen' },
         ])}
+        <h3>Fritrumsprofil ${prof}</h3>
+        ${pfig}
+        ${harGenstand ? `<div class="summary summary-${fri ? 'ok' : 'overskredet'}"><div><strong>Genstand ${fri ? 'står frit' : 'er inden for profilet'}</strong><span>${fmt(st.gx)} mm fra spormidte, ${fmt(st.gz)} mm over inderskinnens SO → i sporplanet ${fmt(gu)} / ${fmt(gv)} mm</span></div>${chip(fri ? 'ok' : 'overskredet')}</div>` : ''}
+        ${set.tsi ? `<div class="tsi"><div class="tsi-head"><span class="tsi-flag">EU</span><strong>TSI INF 4.2.3.1 – profil</strong></div>
+          <p class="tip" style="margin-top:0">Trafikkode ${opt.kode} kræver profil <b>${TSI_GAUGE[opt.kode]}</b> (TSI tabel 2/3) beregnet efter EN 15273-3. Banedanmark udmønter kravet i BN1-166-1: ${opt.kode === 'P1' || opt.kode === 'F1' ? 'D-GC dækker GC (afviger 20 mm i højden ved 4 820 mm).' : opt.kode === 'S' ? 'S-banen er ikke omfattet af TSI-profilkravet; profil SD gælder.' : 'profil D anvendes for P2–P6/F2–F4.'} TSI-profilernes egne mål står i EN 15273-3 og er ikke tegnet her.</p></div>` : ''}
         <h3>Breddeforøgelsens forløb</h3>
         ${fig}
         <p class="tip">Breddeforøgelsen ${overgang}. Den gives i hele højden af profil D, D-GC og SD, men ikke i fritrumsprofilet over øvre del. Mellem to kurver se fig. 12-4, 12-5 og 12-7.</p>
@@ -103,23 +121,29 @@ export const fritrum: Module = {
           { label: 'Mål n (øvrige faste genstande)', formel: '70 + sporudvidelse', indsat: `70 + ${sk.udv}`, resultat: `${sk.nOevrig} mm` },
           { label: 'Mål m', formel: 'afsnit 14', indsat: '', resultat: `${sk.mFast} / ${sk.mOevrig} mm` },
         ],
-        checks: [],
+        checks: harGenstand ? [{ label: 'Genstand uden for profil (inkl. tillæg)', value: `${fmt(st.gx)} / ${fmt(st.gz)} mm`, graense: `uden for ${prof}`, status: fri ? 'ok' : 'overskredet', kilde: 'BN1-166-1 afsnit 10–13' }] : [],
         noter: [
+          'Profilmålene er aflæst af figur 11.1.1-1 til -3 i BN1-166-1 – kontrollér kritiske mål mod normen.',
           'Profilmålene er absolutte og skal altid overholdes; vedligeholdelsestillægget gives ved opgradering, nyanlæg, sporfornyelse og større ombygning.',
           'Kurver med R < 150 m og afrundinger med R<sub>v</sub> < 500 m kræver dispensation og beregning efter DS/EN 15273-1…3.',
         ],
         refs: ['BN1-166', 'EN15273', 'SR87', 'ST16', 'BN1-154'],
-        figur: fig,
+        figur: pfig + fig,
       });
     };
     const f = form<keyof S>([
       { key: 'R', label: 'Kurveradius (0 = ret spor)', symbol: 'R', unit: 'm', min: 0, max: 1000, step: 5 },
       { key: 'okl', label: 'Overgangskurvelængde (0 = ingen)', symbol: 'L', unit: 'm', min: 0, max: 200, step: 5 },
       { key: 'Rv', label: 'Afrundingsradius i længdeprofil', symbol: 'R<sub>v</sub>', unit: 'm', min: 500, max: 20000, step: 100 },
+      { key: 'h', label: 'Overhøjde', symbol: 'h', unit: 'mm', min: 0, max: 180, step: 5 },
+      { key: 'gx', label: 'Genstand: vandret afstand fra spormidte (0 = ingen)', symbol: 'x', unit: 'mm', min: -4000, max: 4000, step: 10, hint: '+ mod kurvens yderside' },
+      { key: 'gz', label: 'Genstand: højde over inderskinnens SO', symbol: 'z', unit: 'mm', min: 0, max: 6000, step: 10 },
     ], st, update);
     f.prepend(
       select('Trafikkode (TSI)', 'kode', [['P1', 'P1 (højhastighed)'], ['P2', 'P2'], ['P3', 'P3'], ['P4', 'P4'], ['P5', 'P5'], ['P6', 'P6'], ['F1', 'F1'], ['F2', 'F2'], ['F3', 'F3'], ['F4', 'F4'], ['S', 'S-bane']], opt, update),
       select('Sporkonstruktion', 'spor', [['ballast', 'Ballasteret spor'], ['fast', 'Fast befæstet spor']], opt, update),
+      select('Kurvens yderside', 'yder', [['1', 'Højre (+x)'], ['-1', 'Venstre (−x)']], opt, update),
+      select('Vis vedligeholdelsestillæg', 'tillaeg', [['ja', 'Ja (projektering)'], ['nej', 'Nej (drift)']], opt, update),
     );
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));
     update();

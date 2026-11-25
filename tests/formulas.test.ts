@@ -441,3 +441,25 @@ describe('BN1-13-4 ledningsanlæg', () => {
     expect(r.checks.filter((c) => c.status === 'overskredet').length).toBe(2);
   });
 });
+
+import { PROFILER, profilMedTillaeg, fuldtProfil, iPolygon, tilSporplan } from '../src/core/fritrum';
+
+describe('BN1-166-1 profiler', () => {
+  it('profil D og tillæg', () => {
+    const p = fuldtProfil(PROFILER.D);
+    expect(iPolygon([0, 2000], p)).toBe(true);
+    expect(iPolygon([1990, 2000], p)).toBe(true);
+    expect(iPolygon([2010, 2000], p)).toBe(false);
+    expect(iPolygon([1900, 3400], p)).toBe(false);
+    const t = fuldtProfil(profilMedTillaeg('D', { e: 48, dhRv: 0, vandret: 50, lodret: 100 }));
+    expect(iPolygon([2090, 2000], t)).toBe(true);
+    expect(iPolygon([0, 4890], t)).toBe(true);
+  });
+  it('sporplan uden og med overhøjde', () => {
+    expect(tilSporplan(1000, 500, 0)).toEqual([1000, 500]);
+    const th = Math.asin(160 / 1500);
+    const [u, v] = tilSporplan(-753.5 + 1507 * Math.cos(th), 1507 * Math.sin(th), 160, 1); // ydre skinnes top løftet 160 mm
+    expect(u).toBeCloseTo(753.5, 0);
+    expect(v).toBeCloseTo(0, 0);
+  });
+});
