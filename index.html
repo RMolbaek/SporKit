@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="SporKit – sporgeometri i lommen. Beregn overhøjde, overgangskurver, mindste radius og største hastighed efter Banedanmarks sporregler." />
+    <meta name="theme-color" content="#0f3d3e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+    <title>SporKit</title>
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="#">
+        <img src="./icon.svg" alt="" width="30" height="30" />
+        <span><strong>Spor</strong>Kit</span>
+      </a>
+      <span class="tag">Banedanmark · Sporregler</span>
+      <button id="theme" class="icon-btn" aria-label="Skift lyst/mørkt tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+    </header>
+    <nav id="nav" class="nav" aria-label="Moduler"></nav>
+    <div class="page">
+      <div class="page-head">
+        <h1 id="mod-titel"></h1>
+        <p id="mod-besk"></p>
+      </div>
+      <main id="main"></main>
+      <footer class="foot">
+        SporKit er et hjælpeværktøj. Kontrollér altid resultater mod gældende banenormer.
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

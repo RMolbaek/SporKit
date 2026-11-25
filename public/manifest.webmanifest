@@ -1,0 +1,11 @@
+{
+  "name": "SporKit – sporgeometri i lommen",
+  "short_name": "SporKit",
+  "lang": "da",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1414",
+  "theme_color": "#0f3d3e",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
