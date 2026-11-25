@@ -54,7 +54,7 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
 
   const first = g.spor[0], last = g.spor[g.spor.length - 1];
   const yDimPb = groundY + 0.9 * T;
-  const pbDims = `${dimH(M(g.edgeL.x), M(first.cx), yDimPb, `Pb ${fmt(p.Pb, 2)}`, false)}${dimH(M(last.cx), M(g.edgeR.x), yDimPb, `Pb ${fmt(p.Pb, 2)}`, false)}`;
+  const pbDims = `${dimH(M(g.edgeL.x), M(first.cx), yDimPb, `Pb ${fmt(g.PbL, 2)}`, false)}${dimH(M(last.cx), M(g.edgeR.x), yDimPb, `Pb ${fmt(g.PbR, 2)}`, false)}`;
   const fsDim = g.spor.length === 2 ? dimH(M(first.cx), M(last.cx), -5 * T, `fs ${fmt(p.fs, 2)}`) : '';
   const xUt = g.edgeL.x + 0.35;
   const utDim = dimV(M(xUt), M(g.planum(xUt)), M(g.raajord(xUt)), `Ut ${fmt(p.Ut, 2)}`);

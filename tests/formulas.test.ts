@@ -510,3 +510,28 @@ describe('Åbenhed: kilder skal være åbne og tilgængelige', () => {
     }
   });
 });
+
+import { pbTillaeg } from '../src/core/bn16';
+
+describe('BN1-6-7 fodnote 4: Pb i kurvens yderside', () => {
+  const base = { sidespor: false, A: 22.5, svelle: 'S99' as const, L: 2500, ls60: false, R: 0 };
+  const p = { Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.0, PbYder: 0.30, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1, fs: 4.5 };
+  it('tillæg efter overhøjde', () => {
+    expect([0, 4, 5, 80, 85, 160].map(pbTillaeg)).toEqual([0, 0, 0.15, 0.15, 0.30, 0.30]);
+    expect(krav({ ...base, projekt: 'fornyelse', V: 120, h: 60 }).PbYderTillaeg).toBe(0.15);
+    expect(krav({ ...base, projekt: 'bn1', V: 180, h: 120 }).PbYderTillaeg).toBe(0.30);
+    expect(krav({ ...base, projekt: 'bn1', V: 220, h: 120 }).PbYderTillaeg).toBe(0);
+    expect(krav({ ...base, projekt: 'nyanlaeg', V: 120, h: 120 }).PbYderTillaeg).toBe(0);
+  });
+  it('tillægget lægges kun i ydersiden, og overhøjden flytter ballastfoden udad', () => {
+    const g = geometri([{ h: 120, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(g.PbR).toBeCloseTo(3.30, 9);
+    expect(g.PbL).toBeCloseTo(3.00, 9);
+    const gv = geometri([{ h: 120, yder: -1 }], p, SVELLE_DATA.S99);
+    expect(gv.PbL).toBeCloseTo(3.30, 9);
+    expect(gv.PbR).toBeCloseTo(3.00, 9);
+    const g0 = geometri([{ h: 0, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(g0.PbR).toBeCloseTo(3.00, 9);
+    expect(g.toeR.x).toBeGreaterThan(g0.toeR.x);
+  });
+});

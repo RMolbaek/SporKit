@@ -34,7 +34,7 @@ export interface KravInput {
   h: number;
 }
 
-type Kol = 'side' | 'v160' | 'v200' | 'v250';
+export type Kol = 'side' | 'v160' | 'v200' | 'v250';
 const T: Record<Projekt, Record<Kol, [number, number, number, number, number]>> = {
   // [Bsk, a, Bt, Ut, Pb]
   nyanlaeg: { side: [0.30, 1.5, 0.25, 0.15, 3.30], v160: [0.40, 1.5, 0.30, 0.25, 3.80], v200: [0.55, 1.5, 0.35, 0.40, 3.80], v250: [0.50, 1.5, 0.35, 0.40, 3.80] },
@@ -64,6 +64,18 @@ export function forhoejetSkulder(i: Pick<KravInput, 'sidespor' | 'V' | 'svelle' 
   return false;
 }
 
+/** Fodnote 4 (fig. 12.1-4 og 10.2.3-2): tillæg til Pb i kurvens yderside [m] ud fra overhøjden h [mm]. */
+export function pbTillaeg(h: number): number {
+  if (h > 80) return 0.30; // 85–160 mm (overhøjder angives i 5 mm-trin)
+  if (h >= 5) return 0.15;
+  return 0;
+}
+
+/** Fodnote 4 står ved Pb for sidespor, V ≤ 160 og 160 < V ≤ 200 ved sporfornyelse og BN1 – ikke i nyanlægstabellen (fig. 15.1-3). */
+export function pbTillaegGaelder(projekt: Projekt, k: Kol): boolean {
+  return projekt !== 'nyanlaeg' && k !== 'v250';
+}
+
 export function krav(i: KravInput): Krav {
   const k = kolonne(i.sidespor, i.V);
   let [Bsk, a, Bt, Ut, Pb] = T[i.projekt][k];
@@ -83,13 +95,10 @@ export function krav(i: KravInput): Krav {
     Ut += t;
     noter.push(`Betonsvelle L = ${i.L} mm < 2500 mm: Ut + (2500 − L)/2 = ${(t * 1000).toFixed(0)} mm.`);
   }
-  // Pb i kurvens yderside (fodnote 4, fornyelse og BN1, ikke 200 < V ≤ 250)
-  let PbYderTillaeg = 0;
-  if (i.projekt !== 'nyanlaeg' && k !== 'v250' && i.R > 0) {
-    if (i.h >= 85) PbYderTillaeg = 0.30;
-    else if (i.h >= 5) PbYderTillaeg = 0.15;
-    if (PbYderTillaeg) noter.push(`Kurvens yderside, h = ${i.h} mm: Pb + ${PbYderTillaeg.toFixed(2).replace('.', ',')} m (fodnote 4).`);
-  }
+  // Pb i kurvens yderside (fodnote 4 i fig. 12.1-4 og 10.2.3-2; ikke 200 < V ≤ 250 og ikke ved nyanlæg)
+  const PbYderTillaeg = pbTillaegGaelder(i.projekt, k) ? pbTillaeg(i.h) : 0;
+  if (PbYderTillaeg) noter.push(`Kurvens yderside, h = ${i.h} mm: Pb + ${PbYderTillaeg.toFixed(2).replace('.', ',')} m (fodnote 4) – gælder kun ydersiden.`);
+  if (i.h > 160) noter.push(`h = ${i.h} mm ligger over BN1-6-7 fodnote 4's interval (85–160 mm); tillægget 0,30 m er anvendt.`);
   const hYder = forhoejetSkulder(i) ? 0.10 : 0;
   if (hYder) noter.push('Langskinnespor med 60 kg/m-skinner i lille radius: ballastskulderen i kurvens yderside forhøjes til h = 0,10 m.');
   const saenket = !i.sidespor && i.V > 160;
@@ -108,6 +117,8 @@ export interface SporInput {
 
 export interface Parametre {
   Bsk: number; a: number; Bt: number; Ut: number; Pb: number; Xp: number; Xrp: number;
+  /** Tillæg til Pb i kurvens yderside [m] – lægges kun på den side, hvor sporets overhøjde vender udad */
+  PbYder?: number;
   hSkulder: number;
   /** Baneskråningens anlæg og dæmningshøjde under planumskant [m] */
   as: number; daemning: number;
@@ -145,6 +156,8 @@ export interface Geometri {
   underballast: P[];
   daemning: P[];
   pbbL: number; pbbR: number;
+  /** Faktisk Pb (vandret fra spormidte til planumskant) venstre / højre [m] */
+  PbL: number; PbR: number;
 }
 
 const RAIL_TOP = 0.182; // skinneoverkant over svelleoverkant (172 + 10 mm mellemlæg)
@@ -207,8 +220,11 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   };
   const first = out[0], last = out[out.length - 1];
   const toeL = toe(first.shL, -1), toeR = toe(last.shR, 1);
-  const edgeL = { x: first.cx - p.Pb, y: planum(first.cx - p.Pb) };
-  const edgeR = { x: last.cx + p.Pb, y: planum(last.cx + p.Pb) };
+  // Pb måles vandret fra spormidte; tillægget gælder kun kurvens yderside (det yderste spor på den side har overhøjde udad)
+  const yderL = spor[0].yder === -1 && spor[0].h >= 5, yderR = spor[n - 1].yder === 1 && spor[n - 1].h >= 5;
+  const PbL = p.Pb + (yderL ? p.PbYder ?? 0 : 0), PbR = p.Pb + (yderR ? p.PbYder ?? 0 : 0);
+  const edgeL = { x: first.cx - PbL, y: planum(first.cx - PbL) };
+  const edgeR = { x: last.cx + PbR, y: planum(last.cx + PbR) };
   // Mellem sporene: V-formet ballast mellem skuldrene
   let mellem: P[] | undefined;
   if (out.length === 2) {
@@ -244,7 +260,7 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   const daemning = [rjL, { x: apexX, y: apexY + p.Ut }, rjR, footR, footL];
   return {
     spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, footL, footR, mellem,
-    ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x,
+    ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x, PbL, PbR,
   };
 }
 

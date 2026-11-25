@@ -1,5 +1,5 @@
 import {
-  krav, geometri, areal, SVELLE_DATA, PROJEKT_TEKST, type Projekt, type Svelletype, type Parametre, type SporInput,
+  krav, geometri, areal, kolonne, pbTillaeg, pbTillaegGaelder, SVELLE_DATA, PROJEKT_TEKST, type Projekt, type Svelletype, type Parametre, type SporInput,
 } from '../core/bn16';
 import { tsiTrackCentres } from '../core/tsi';
 import { setReport } from '../core/report';
@@ -15,7 +15,7 @@ type Opt = { projekt: string; sidespor: string; svelle: string; antal: string; l
 
 const DEF: State = {
   V: 160, A: 22.5, L: 2500, R: 0, h1: 0, h2: 0,
-  Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1.0, fs: 4.5,
+  Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, PbYder: 0, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1.0, fs: 4.5,
 };
 
 function felt(label: string, value: number, step: number, unit: string, onInput: (v: number) => void, normTxt?: string): HTMLElement {
@@ -45,7 +45,7 @@ export const tvaerprofil: Module = {
     /** Opdatér parameterfelter og kravtekster uden at gentegne panelet (bevarer fokus). */
     const syncParams = () => {
       const k = kravNu();
-      const kravMap: Partial<Record<keyof Parametre, number>> = { Bsk: k.Bsk, a: k.a, Bt: k.Bt, Ut: k.Ut, Pb: k.Pb + k.PbYderTillaeg, Xp: k.Xp, Xrp: k.Xrp, hSkulder: k.hYder };
+      const kravMap: Partial<Record<keyof Parametre, number>> = { Bsk: k.Bsk, a: k.a, Bt: k.Bt, Ut: k.Ut, Pb: k.Pb, PbYder: k.PbYderTillaeg, Xp: k.Xp, Xrp: k.Xrp, hSkulder: k.hYder };
       for (const [key, o] of paramInputs) {
         if (document.activeElement !== o.inp) o.inp.value = String(st[key]);
         const kv = kravMap[key];
@@ -60,7 +60,7 @@ export const tvaerprofil: Module = {
 
     const brugNorm = () => {
       const k = kravNu();
-      Object.assign(st, { Bsk: k.Bsk, a: k.a, Bt: k.Bt, Ut: k.Ut, Pb: k.Pb + k.PbYderTillaeg, Xp: k.Xp, Xrp: k.Xrp, hSkulder: k.hYder });
+      Object.assign(st, { Bsk: k.Bsk, a: k.a, Bt: k.Bt, Ut: k.Ut, Pb: k.Pb, PbYder: k.PbYderTillaeg, Xp: k.Xp, Xrp: k.Xrp, hSkulder: k.hYder });
     };
 
     const update = () => {
@@ -71,6 +71,10 @@ export const tvaerprofil: Module = {
       const spor: SporInput[] = [{ h: st.h1, yder: opt.yder1 === '1' ? 1 : -1 }];
       if (opt.antal === '2') spor.push({ h: st.h2, yder: opt.yder2 === '1' ? 1 : -1 });
       const g = geometri(spor, st, sv);
+      // Overhøjdens effekt: samme profil uden overhøjde til sammenligning
+      const g0 = geometri(spor.map((s) => ({ ...s, h: 0 })), st, sv);
+      const dFodL = g0.toeL.x - g.toeL.x, dFodR = g.toeR.x - g0.toeR.x;
+      const harH = spor.some((s) => s.h > 0);
       const fig = tvaerprofilSvg(g, st, spor, sv, k.saenket);
 
       // Kontrol
@@ -82,8 +86,17 @@ export const tvaerprofil: Module = {
       const btMin = Math.min(...g.spor.map((t) => t.btMin));
       chk('Ballastens tykkelse Bt (mindste under skinnestreng)', btMin, k.Bt, 'm', 3);
       chk('Underballastens tykkelse Ut', st.Ut, k.Ut, 'm');
-      const kurve = spor.some((s) => s.h > 0);
-      chk(`Planumsbredde Pb${k.PbYderTillaeg && kurve ? ' (kurvens yderside)' : ''}`, st.Pb, k.Pb + (kurve ? k.PbYderTillaeg : 0), 'm');
+      // Planumsbredde pr. side: tillæg efter fodnote 4 kun i kurvens yderside, ud fra overhøjden i det yderste spor
+      const gaelder = pbTillaegGaelder(opt.projekt as Projekt, kolonne(opt.sidespor === 'ja', st.V));
+      const sider = [
+        { navn: 'venstre', s: spor[0], yder: spor[0].yder === -1 && spor[0].h >= 5, Pb: g.PbL },
+        { navn: 'højre', s: spor[spor.length - 1], yder: spor[spor.length - 1].yder === 1 && spor[spor.length - 1].h >= 5, Pb: g.PbR },
+      ];
+      for (const sd of sider) {
+        const till = sd.yder && gaelder ? pbTillaeg(sd.s.h) : 0;
+        const txt = sd.yder ? `kurvens yderside, h = ${fmt(sd.s.h)} mm${till ? `: + ${fmt(till, 2)} m (fodnote 4)` : ''}` : spor.some((s) => s.h >= 5) ? 'kurvens inderside' : 'ret spor';
+        chk(`Planumsbredde Pb ${sd.navn} (${txt})`, sd.Pb, k.Pb + till, 'm');
+      }
       chk('Hældning af planum Xp', st.Xp, k.Xp, '‰', 0);
       chk('Hældning af råjordsplanum Xrp', st.Xrp, k.Xrp, '‰', 0);
       if (k.hYder > 0) chk('Forhøjet ballastskulder h (kurvens yderside)', st.hSkulder, k.hYder, 'm');
@@ -91,6 +104,13 @@ export const tvaerprofil: Module = {
       if (opt.antal === '2') {
         const tc = tsiTrackCentres(st.V);
         if (tc !== null) rows.push({ label: 'Sporafstand fs (TSI INF tabel 4, nye strækninger)', value: `${fmt(st.fs, 2)} m`, graense: `≥ ${fmt(tc, 2)} m`, status: st.fs >= tc - 1e-6 ? 'ok' : 'overskredet' });
+      }
+      const noter = [...k.noter];
+      if (harH) {
+        noter.push(`Overhøjde: sporet drejes om inderskinnen, så svelleenden og ballastskulderen i ydersiden løftes, og ballastfoden flyttes ${fmt(Math.max(dFodL, dFodR) * 1000)} mm udad (planum fastholdt af Bt under den laveste skinnestreng). Derfor kræver BN1-6-7 fodnote 4 en større planumsbredde i kurvens yderside.`);
+        if (!gaelder) noter.push(opt.projekt === 'nyanlaeg'
+          ? 'Nyanlægstabellen (fig. 15.1-3) har intet Pb-tillæg for overhøjde – overhøjdens effekt kontrolleres i stedet ved, at ballastfoden ligger inden for planum (Pbb ≥ 0).'
+          : '200 < V ≤ 250 km/t: Pb = 3,80 m uden fodnote 4-tillæg – overhøjdens effekt kontrolleres ved Pbb ≥ 0.');
       }
       const total: Status = rows.some((r) => r.status === 'overskredet') ? 'overskredet' : 'ok';
 
@@ -119,10 +139,11 @@ export const tvaerprofil: Module = {
               <tr><td>Planumsbredde i alt</td><td>${fmt(bredde, 2)} m</td></tr>
               ${g.spor.map((t, i) => `<tr><td>Bt spor ${i + 1} (venstre / højre streng)</td><td>${fmt(t.btVenstre, 3)} / ${fmt(t.btHoejre, 3)} m</td></tr>`).join('')}
               <tr><td>Planumsbanket Pbb (v / h)</td><td>${fmt(g.pbbL, 2)} / ${fmt(g.pbbR, 2)} m</td></tr>
+              ${harH ? `<tr><td>Overhøjdens flytning af ballastfoden (v / h)</td><td>${dFodL >= 0 ? '+' : ''}${fmt(dFodL * 1000)} / ${dFodR >= 0 ? '+' : ''}${fmt(dFodR * 1000)} mm</td></tr>` : ''}
             </tbody></table>
           </div>
         </div>
-        ${k.noter.length ? `<div class="notice">${k.noter.map((n) => `• ${n}`).join('<br/>')}</div>` : ''}
+        ${noter.length ? `<div class="notice">${noter.map((n) => `• ${n}`).join('<br/>')}</div>` : ''}
         <p class="tip">Ballastskulderen følger svelleoverkanten og er parallel med SO-planet; sporene drejes om inderskinnen. Planum og råjordsplanum falder udad fra ${opt.antal === '2' ? 'midten mellem sporene' : 'spormidten'}, og planum lægges, så den mindste ballasttykkelse under en skinnestreng netop er Bt. Sporafstand: se BN1-154. Mængderne er et overslag (svellernes andel er fratrukket med 0,3 m bredde pr. 0,625 m).</p>
       `;
       setReport({
@@ -134,19 +155,21 @@ export const tvaerprofil: Module = {
           { label: 'Svelle', symbol: 'L', value: `${SVELLE_DATA[opt.svelle as Svelletype].navn}, ${st.L} mm`, unit: '' },
           { label: 'Overhøjde spor 1 / 2', symbol: 'h', value: `${st.h1}${opt.antal === '2' ? ` / ${st.h2}` : ''}`, unit: 'mm' },
           { label: 'Kurveradius', symbol: 'R', value: st.R > 0 ? fmt(st.R) : 'ret spor', unit: 'm' },
-          { label: 'Bsk / a / Bt / Ut / Pb', symbol: '', value: `${fmt(st.Bsk, 2)} / ${fmt(st.a, 1)} / ${fmt(st.Bt, 2)} / ${fmt(st.Ut, 2)} / ${fmt(st.Pb, 2)}`, unit: 'm' },
+          { label: 'Bsk / a / Bt / Ut / Pb / Pb-tillæg yderside', symbol: '', value: `${fmt(st.Bsk, 2)} / ${fmt(st.a, 1)} / ${fmt(st.Bt, 2)} / ${fmt(st.Ut, 2)} / ${fmt(st.Pb, 2)} / ${fmt(st.PbYder ?? 0, 2)}`, unit: 'm' },
           { label: 'Xp / Xrp', symbol: '', value: `${st.Xp} / ${st.Xrp}`, unit: '‰' },
           ...(opt.antal === '2' ? [{ label: 'Sporafstand', symbol: 'fs', value: fmt(st.fs, 2), unit: 'm' }] : []),
         ],
         steps: [
           { label: 'Krav (projekttype og kolonne)', formel: PROJEKT_TEKST[opt.projekt as Projekt], indsat: opt.sidespor === 'ja' ? 'sidespor' : `V = ${st.V} km/t`, resultat: `Bsk ${fmt(k.Bsk, 2)} · Bt ${fmt(k.Bt, 2)} · Ut ${fmt(k.Ut, 2)} · Pb ${fmt(k.Pb, 2)}` },
           ...g.spor.map((t, i) => ({ label: `Ballasttykkelse spor ${i + 1}`, formel: 'planum − svelleunderside under skinnestreng', indsat: `${fmt(t.btVenstre, 3)} / ${fmt(t.btHoejre, 3)}`, resultat: `min ${fmt(t.btMin, 3)} m` })),
+          { label: 'Planumsbredde', formel: 'Pb (+ tillæg i kurvens yderside, fodnote 4)', indsat: `${fmt(st.Pb, 2)} + ${fmt(st.PbYder ?? 0, 2)}`, resultat: `v ${fmt(g.PbL, 2)} / h ${fmt(g.PbR, 2)} m` },
           { label: 'Ballastfod', formel: 'skråning 1:a fra skulderkant til planum', indsat: '', resultat: `Pbb ${fmt(g.pbbL, 2)} / ${fmt(g.pbbR, 2)} m` },
+          ...(harH ? [{ label: 'Overhøjdens effekt på ballastfod', formel: 'fod(h) − fod(h = 0)', indsat: 'rotation om inderskinnen', resultat: `v ${fmt(dFodL * 1000)} / h ${fmt(dFodR * 1000)} mm` }] : []),
           { label: 'Ballastmængde', formel: 'tværsnitsareal − svelleandel', indsat: '', resultat: `${fmt(aBallast, 2)} m³/m` },
           { label: 'Underballastmængde', formel: 'tværsnitsareal', indsat: '', resultat: `${fmt(aUb, 2)} m³/m` },
         ],
         checks: rows.map((r) => ({ ...r, kilde: 'BN1-6-7' })),
-        noter: k.noter,
+        noter,
         refs: ['BN1-6', 'BN1-154', 'BN1-38', 'TSI-INF'],
         figur: fig,
       });
@@ -192,7 +215,8 @@ export const tvaerprofil: Module = {
         pv('a', 'Anlæg a', 0.1, '', k.a),
         pv('Bt', 'Bt', 0.01, 'm', k.Bt),
         pv('Ut', 'Ut', 0.01, 'm', k.Ut),
-        pv('Pb', 'Pb', 0.05, 'm', k.Pb + k.PbYderTillaeg),
+        pv('Pb', 'Pb', 0.05, 'm', k.Pb),
+        pv('PbYder', 'Pb-tillæg yderside', 0.05, 'm', k.PbYderTillaeg),
         pv('Xp', 'Xp', 5, '‰', k.Xp),
         pv('Xrp', 'Xrp', 5, '‰', k.Xrp),
         pv('hSkulder', 'h skulder (yderside)', 0.01, 'm', k.hYder),
