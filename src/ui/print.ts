@@ -1,5 +1,5 @@
 import type { Report } from '../core/report';
-import { REFERENCES } from '../core/references';
+import { REFERENCES, ADGANG_TEKST } from '../core/references';
 import { BANEDANMARK as rs, loadSettings } from '../core/rules';
 import { STATUS_TEKST } from './dom';
 
@@ -64,10 +64,10 @@ export function buildReportHtml(r: Report, projekt: { navn: string; sted: string
     ${r.noter?.length ? `<h2>Bemærkninger</h2><ul class="rpt-notes">${r.noter.map((n) => `<li>${n}</li>`).join('')}</ul>` : ''}
 
     <h2>Referencer</h2>
-    <ol class="rpt-refs">${refs.map((x) => `<li><b>${x.kort}</b> – ${x.titel}. ${x.udgiver}.${x.gennemgaaet ? '' : ' <i>(ikke gennemgået af SporKit)</i>'}</li>`).join('')}</ol>
+    <ol class="rpt-refs">${refs.map((x) => `<li><b>${x.kort}</b> – ${x.titel}. ${x.udgiver}. <i>${ADGANG_TEKST[x.adgang]}</i>${x.url ? ` – <span class="rpt-url">${x.url}</span>` : ''}</li>`).join('')}</ol>
 
     <div class="rpt-disc">
-      Grænseværdier markeret som «antaget» er ikke fundet i dansk kilde og skal kontrolleres. «Sekundær» betyder gengivet
+      Alle kilder er angivet med tilgængelighed; frit tilgængelige kilder er linket. Grænseværdier markeret som «antaget» har ingen frit tilgængelig dansk kilde og skal kontrolleres. «Sekundær» betyder gengivet
       fra Banedanmarks lærebog <i>Sporteknik</i> (2016), der citerer Sporregler. SporKit er et hjælpeværktøj og
       erstatter ikke projektering efter gældende banenormer.
     </div>

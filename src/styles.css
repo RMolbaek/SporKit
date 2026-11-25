@@ -192,7 +192,8 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .tbl-kv td:last-child { text-align: left !important; white-space: normal !important; }
 .refs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .ref { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-.ref-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ref-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ref-head .ref-id { margin-right: auto; }
 .ref-id { font: 600 14px var(--mono); color: var(--brand); }
 .ref-title { font-weight: 600; font-size: 14px; }
 .ref-pub, .ref-use { font-size: 13px; color: var(--muted); }
@@ -449,6 +450,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
   .rpt-notes, .rpt-refs { font-size: 8.8pt; padding-left: 18px; margin: 4px 0; }
   .rpt-refs li { margin-bottom: 2px; }
   .rpt-disc { margin-top: 10px; font-size: 7.8pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+  .rpt-url { font-size: 7.5pt; color: var(--muted); word-break: break-all; }
   .rpt-page { break-before: page; page-break-before: always; }
   .rpt-page h2 { margin-top: 0; }
   .rpt-page .viz { max-width: 120mm; margin: 6px auto; display: block; background: #fff; border: 1px solid var(--line); }

@@ -1,5 +1,6 @@
 import { BANEDANMARK as rs, type Limit, loadSettings, saveSettings, SPORUDVIDELSE } from '../core/rules';
 import { cantConstant } from '../core/formulas';
+import { harAabenKilde } from '../core/references';
 import { setReport } from '../core/report';
 import { card, fmt, h, kildeChip, select, type Module } from '../ui/dom';
 
@@ -49,7 +50,7 @@ export const regler: Module = {
           <tr><td><div>${l.label}</div><small>${l.note}</small></td>
           <td>${fmt(l.normal, l.normal % 1 ? 1 : 0)} ${l.unit}</td>
           <td>${fmt(l.undtagelse, l.undtagelse % 1 ? 1 : 0)} ${l.unit}</td>
-          <td>${kildeChip(l)}<br/><small>${l.kilde.join('<br/>')}</small></td></tr>`).join('')}
+          <td>${kildeChip(l)} ${harAabenKilde(l.kilde) ? '<span class="chip chip-ok">Åben kilde</span>' : '<span class="chip chip-overskredet">Ingen åben kilde</span>'}<br/><small>${l.kilde.join('<br/>')}</small></td></tr>`).join('')}
         </tbody>
       </table>
       <h3>Konstanter</h3>

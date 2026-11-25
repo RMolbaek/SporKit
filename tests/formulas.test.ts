@@ -494,3 +494,19 @@ describe('Fritrumskontrol af opmålingspunkter', () => {
     expect(afstandTilKant([0, 0], [[-1, -1], [1, -1], [1, 1], [-1, 1]])).toBeCloseTo(1, 6);
   });
 });
+
+import { REFERENCES, harAabenKilde } from '../src/core/references';
+import { BANEDANMARK as BDK, type Limit } from '../src/core/rules';
+
+describe('Åbenhed: kilder skal være åbne og tilgængelige', () => {
+  it('alle frit tilgængelige kilder har et link', () => {
+    for (const r of REFERENCES) if (r.adgang === 'aaben') expect(r.url, r.id).toMatch(/^https:\/\//);
+  });
+  it('alle grænseværdier har en kildeangivelse, og antagne værdier er markeret', () => {
+    const limits = Object.values(BDK).filter((v): v is Limit => typeof v === 'object' && v !== null && 'kilde' in v);
+    for (const l of limits) {
+      expect(l.kilde.length, l.label).toBeGreaterThan(0);
+      if (!harAabenKilde(l.kilde)) expect(l.status, l.label).toBe('antaget');
+    }
+  });
+});
