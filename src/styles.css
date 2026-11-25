@@ -209,6 +209,41 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .dlg input { border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: 10px; padding: 10px 12px; font: 15px var(--font); }
 .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 #print-root { display: none; }
+
+/* ---------- tracétavler ---------- */
+.card-scroll { position: static !important; }
+.editor { display: grid; gap: 8px; margin-top: 16px; }
+.ed-sec { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 6px; }
+.ed-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--surface-2); }
+.ed-bue { border-left: 4px solid var(--brand-2); }
+.ed-ret { border-left: 4px solid var(--muted); }
+.ed-ovg { background: transparent; border-style: dashed; margin-left: 14px; padding: 8px 10px; }
+.ed-knaek { border-left: 4px solid var(--accent); }
+.ed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; }
+.ed-head span { color: var(--muted); font-size: 13px; }
+.ed-head select { margin-left: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 4px 8px; font: 500 13px var(--font); }
+.ed-del { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 6px; }
+.ed-knaek .ed-del { margin-left: auto; }
+.ed-del:hover { color: var(--bad); background: var(--bad-soft); }
+.ed-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+.ed-f { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.ed-inp { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; }
+.ed-inp input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: 600 15px var(--font); padding: 7px 0; outline: none; }
+.ed-inp small { color: var(--muted); }
+.ed-add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-sm { padding: 7px 12px; font-size: 13px; }
+.plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.plate { background: #f7f7f2; color: #111; border: 2px solid #2b2b2b; border-radius: 4px; padding: 6px 8px 8px; font-family: var(--font); font-variant-numeric: tabular-nums; box-shadow: 0 1px 0 #0002; break-inside: avoid; }
+.plate-V { background: #f2f5f9; }
+.pl-km { font: 600 11px var(--font); color: #555; margin-bottom: 4px; }
+.pl-body { display: grid; grid-template-columns: 30px 1fr 30px 44px; gap: 4px 6px; align-items: end; font-size: 12.5px; }
+.pl-l { font-family: 'Times New Roman', serif; font-size: 13px; }
+.pl-v { border-bottom: 1.5px solid #111; min-height: 17px; text-align: center; font-weight: 600; }
+.pl-sym { grid-column: 4; justify-self: center; border: 1.5px solid #111; min-width: 26px; padding: 0 4px; text-align: center; font-weight: 700; }
+.pl-pkt { margin-top: 6px; font: 500 10.5px var(--font); color: #666; }
+.tt-sym { font-family: var(--font); font-weight: 700; }
+.viz-tt { max-width: 100%; }
+@media print { .rpt-fig { flex-wrap: wrap; } .rpt-fig .viz-tt, .rpt-fig .plates { flex: 1 1 100%; } .plates { grid-template-columns: repeat(3, 1fr); gap: 6px; } .plate { font-size: 9pt; } }
 .tsi { margin-top: 18px; border: 1px solid color-mix(in srgb, #2f5fb3 35%, var(--line)); border-radius: 14px; padding: 12px 14px; background: color-mix(in srgb, #2f5fb3 5%, var(--surface)); }
 .tsi-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .tsi-head .chip { margin-left: auto; }
@@ -223,6 +258,8 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .tbl-mini td.hit { background: var(--accent-soft); font-weight: 700; box-shadow: inset 0 0 0 2px var(--accent); border-radius: 4px; }
 .viz .pf-plat { fill: #cfc8b8; stroke: #7a7466; stroke-width: 6; }
 .viz .pf-ground { fill: #8a6f52; }
+.viz .pf-ballast { fill: #a7a294; stroke: #6d6a60; stroke-width: 4; }
+.viz .t-ghost-r { fill: none; stroke: var(--muted); stroke-width: 5; stroke-dasharray: 20 14; }
 .viz-zone { max-width: 680px; }
 .viz .z-track { fill: #a7a294; }
 .viz .z-rail { stroke: #4f5961; stroke-width: 6; }

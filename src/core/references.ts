@@ -114,12 +114,13 @@ export const REFERENCES: Reference[] = [
   },
   {
     id: 'BN2-93',
-    kort: 'BN2-93',
-    titel: 'Absolut beliggenhed og fast afmærkning af sporets tracé',
+    kort: 'BN2-93-1',
+    titel: 'Absolut beliggenhed og fast afmærkning af sporets tracé (udgivet 01.03.2011)',
     udgiver: 'Banedanmark',
     type: 'Banenorm',
-    anvendelse: 'Fast afmærkning af linjeføring og længdeprofil.',
-    gennemgaaet: false,
+    anvendelse: 'Tracétavlernes felter og symboler (afsn. 10.1–10.3), placering og tolerance ±0,3 m (afsn. 10.4), udfyldningseksempler (bilag 1–2).',
+    url: 'https://bane.dk/Leverandoer/Krav/-/media/F28F8BE73B814CD5A2497A129568AB65.ashx',
+    gennemgaaet: true,
   },
   {
     id: 'EN13803',

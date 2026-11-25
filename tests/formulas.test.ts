@@ -216,3 +216,71 @@ describe('TSI INF (EU) 1299/2014', () => {
     expect(bad).not.toContain('Projekteret overhøjde');
   });
 });
+
+import { horisontaleTavler, vertikaleTavler, kmTekst } from '../src/core/tracetavle';
+
+describe('BN2-93 tracétavler – bilag 1 og 2', () => {
+  const pick = (t: { symbol: string; rad?: number; okl?: number; kvl?: string; ovh?: string; rpl?: number }) =>
+    [t.symbol, t.rad ?? '', t.okl ?? '', t.kvl ?? '', t.ovh ?? '', t.rpl ?? ''].join('|');
+
+  it('eksempel 1: ret – OK – R – OK – ret', () => {
+    const r = horisontaleTavler(
+      [{ type: 'ret', L: 50 }, { type: 'bue', R: 1200, h: 65, L: 200 }, { type: 'ret', L: 50 }],
+      [{ okl: 65, rpl: 0, rstart: 0 }, { okl: 70, rpl: 0, rstart: 0 }],
+    );
+    expect(r.tavler.map(pick)).toEqual([
+      '0|1200|65||0-65|', 'K|1200|65|200|0-65|', 'K|1200|70|200|65-0|', '0|1200|70||65-0|',
+    ]);
+    expect(r.tavler.map((t) => t.pos)).toEqual([50, 115, 315, 385]);
+  });
+
+  it('eksempel 2: ret – OK/rampe – R (rampe længere end OK)', () => {
+    const r = horisontaleTavler(
+      [{ type: 'ret', L: 0 }, { type: 'bue', R: 1200, h: 65, L: 200 }],
+      [{ okl: 40, rpl: 65, rstart: 0 }],
+    );
+    expect(r.tavler.map(pick)).toEqual(['0|1200|40||0-65|65', 'K|1200|40|200||', 'R|||||0-65|65'.replace('|||||', '||||')]);
+  });
+
+  it('eksempel 3: ensvendt R – OK – R', () => {
+    const r = horisontaleTavler(
+      [{ type: 'bue', R: 1200, h: 80, L: 100 }, { type: 'bue', R: 1800, h: 55, L: 300 }],
+      [{ okl: 25, rpl: 0, rstart: 0 }],
+    );
+    expect(r.tavler.map(pick)).toEqual(['K|1200|25|100|80-55|', 'K|1800|25|300|80-55|']);
+  });
+
+  it('eksempel 4b: rampen går ind i den ene kurve', () => {
+    const r = horisontaleTavler(
+      [{ type: 'bue', R: 1200, h: 85, L: 200 }, { type: 'bue', R: 1800, h: 55, L: 300 }],
+      [{ okl: 20, rpl: 30, rstart: -10 }],
+    );
+    expect(r.tavler.map(pick)).toEqual(['R||||85-55|30', 'K|1200|20|200||', 'K|1800|20|300|85-55|30']);
+  });
+
+  it('eksempel 5: modvendte kurver', () => {
+    const r = horisontaleTavler(
+      [{ type: 'bue', R: 1500, h: 55, L: 100 }, { type: 'ret', L: 0 }, { type: 'bue', R: 1000, h: 80, L: 50 }],
+      [{ okl: 70, rpl: 0, rstart: 0 }, { okl: 100, rpl: 0, rstart: 0 }],
+    );
+    expect(r.tavler.map(pick)).toEqual([
+      'K|1500|70|100|55-0|', '0|1500|70||55-0|', '0|1000|100||0-80|', 'K|1000|100|50|0-80|',
+    ]);
+  });
+
+  it('eksempel 6: R – rampe – R uden overgangskurve', () => {
+    const r = horisontaleTavler(
+      [{ type: 'bue', R: 1200, h: 80, L: 100 }, { type: 'bue', R: 1800, h: 55, L: 200 }],
+      [{ okl: 0, rpl: 30, rstart: -15 }],
+    );
+    expect(r.tavler.map(pick)).toEqual(['R||||80-55|30', 'K|1200|0|100||', 'K|1800|0|200||', 'R||||80-55|30']);
+  });
+
+  it('eksempel 7–9: længdeprofil', () => {
+    const v = vertikaleTavler([{ pos: 100, i1: 0.75, i2: -0.75, Rv: 20000 }]);
+    expect(v.tavler.map((t) => `${t.symbol}|${t.rad}|${t.kvl}`)).toEqual(['/\\|20000|30', '/\\|20000|15+15', '/\\|20000|30']);
+    const k = vertikaleTavler([{ pos: 100, i1: 0, i2: 0.8, Rv: 0 }]);
+    expect(k.tavler.map((t) => `${t.symbol}|${t.rad}|${t.kvl}`)).toEqual(['\\/|99999|0+0']);
+    expect(kmTekst(12, 345.4)).toBe('12,345');
+  });
+});

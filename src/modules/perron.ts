@@ -16,7 +16,7 @@ type Opt = { type: string; sit: string; side: string; fremspring: string };
 function perronFigur(A: number, H: number, hc: number, side: 'inder' | 'yder'): string {
   const T = 80;
   const g = 1435 / 2, rc = g + 36, railTop = -182;
-  const th = Math.asin(Math.min(0.2, Math.max(0, hc)) / 1500);
+  const th = Math.asin(Math.min(0.2, Math.max(0, hc) / 1500));
   // Perron i kurvens inderside tegnes til venstre (lav skinne), yderside til højre
   const sgn = side === 'inder' ? -1 : 1;
   const px = -rc, py = railTop; // drejepunkt: inderskinne
@@ -33,11 +33,18 @@ function perronFigur(A: number, H: number, hc: number, side: 'inder' | 'yder'): 
   const platX1 = E.x, platX2 = E.x + sgn * pw;
   const xmin = Math.min(-rc - 500, platX1, platX2) - 250, xmax = Math.max(rc + 500, platX1, platX2) + 250;
   const ytop = Math.min(E.y, railTop) - 420;
+  // Ballast under svellen; skulderen følger sporplanet
+  const sTop = railTop + SKINNE_60E2.hoejde + 10;
+  const TL = rot(-1250, sTop), TR = rot(1250, sTop), BL = rot(-1250, sTop + 206), BR = rot(1250, sTop + 206);
+  const shL = rot(-1250 - 400, sTop), shR = rot(1250 + 400, sTop);
+  const yF = Math.max(BL.y, BR.y) + 300;
+  const ballast = `${shL.x},${shL.y} ${TL.x},${TL.y} ${BL.x},${BL.y} ${BR.x},${BR.y} ${TR.x},${TR.y} ${shR.x},${shR.y} ${shR.x + 1.5 * (yF - shR.y)},${yF} ${shL.x - 1.5 * (yF - shL.y)},${yF}`;
   const railRect = (x: number) => `<rect x="${x - 36}" y="${railTop}" width="72" height="${SKINNE_60E2.hoejde}" rx="8" class="t-rail"/>`;
   return `
   <svg viewBox="${xmin} ${ytop} ${xmax - xmin} ${groundY + 120 - ytop}" class="viz viz-track" role="img" aria-label="Perronafstand og perronhøjde målt ift. SO-planet">
     <defs><marker id="pfA" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="t-arrow"/></marker></defs>
     <rect x="${xmin}" y="${groundY}" width="${xmax - xmin}" height="120" class="pf-ground"/>
+    <polygon points="${ballast}" class="pf-ballast"/>
     <path d="M ${platX1},${E.y} L ${platX2},${E.y} L ${platX2},${groundY} L ${platX1 + sgn * 120},${groundY} L ${platX1 + sgn * 120},${E.y + 220} L ${platX1},${E.y + 220} Z" class="pf-plat"/>
     <g transform="rotate(${deg.toFixed(3)} ${px} ${py})">
       <rect x="-1250" y="${railTop + SKINNE_60E2.hoejde + 10}" width="2500" height="206" class="t-sleeper"/>
@@ -52,6 +59,8 @@ function perronFigur(A: number, H: number, hc: number, side: 'inder' | 'yder'): 
         <text x="${ex - sgn * 110}" y="${(railTop + ey) / 2 + T / 3}" text-anchor="${sgn < 0 ? 'start' : 'end'}" font-size="${T}">H = ${fmt(H)}</text>
       </g>
     </g>
+    ${hc > 0 ? `<rect x="${rc - 36}" y="${railTop}" width="72" height="${SKINNE_60E2.hoejde}" class="t-ghost-r"/>` : ''}
+    <circle cx="${px}" cy="${py}" r="24" class="t-pivot"/>
     <circle cx="${E.x}" cy="${E.y}" r="26" class="t-pivot"/>
     <text x="${platX2 - sgn * 60}" y="${E.y - 50}" text-anchor="${sgn < 0 ? 'start' : 'end'}" font-size="${T * 1.1}" class="t-txt t-b">Perron</text>
     <text x="${xmin + 60}" y="${ytop + 100}" font-size="${T}" class="t-txt t-muted">Overhøjde h = ${fmt(hc)} mm · perron i kurvens ${side === 'inder' ? 'inderside' : 'yderside'} · mm</text>

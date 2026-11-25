@@ -15,6 +15,7 @@
 | I sporet | **Pilhøjde og vridning** | Pilhøjde ↔ radius, vridning over målebase, hastighed fra målt radius |
 | | **Spor og perron** | Nominel perronafstand og tolerancer efter BN1-49-1 (drift, nyanlæg, fornyelse, sporjustering) |
 | | **Sikkerhedszoner på perron** | Sikkerheds- og opholdszone, mindste perronbredde, afstribning, skilte og passagertæthed efter BN1-9-2 |
+| | **Tracétavler** | Udfylder tracétavler (0, K, R, /\ og \/) med km ud fra linjeføring og længdeprofil efter BN2-93 og kontrollerer geometrien |
 | | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
 | Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
 | Grundlag | **Regelgrundlag** | Grænseværdier med kildestatus og indstillinger (skinne, TSI-trafik, sportype, nyanlæg) |

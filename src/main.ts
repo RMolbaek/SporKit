@@ -10,6 +10,7 @@ import { sporkontrol } from './modules/sporkontrol';
 import { kurveudvidelse } from './modules/kurveudvidelse';
 import { perron } from './modules/perron';
 import { sikkerhedszone } from './modules/sikkerhedszone';
+import { tracetavler } from './modules/tracetavler';
 import { overbygning } from './modules/overbygning';
 import { regler } from './modules/regler';
 import { tsi } from './modules/tsi';
@@ -19,7 +20,7 @@ import { buildReportHtml } from './ui/print';
 
 const MODULES: Module[] = [
   overhoejde, overgangskurve, radius, hastighed, kurveelementer,
-  lodret, sporkontrol, perron, sikkerhedszone, kurveudvidelse, overbygning, regler, tsi, referencer,
+  lodret, sporkontrol, perron, sikkerhedszone, tracetavler, kurveudvidelse, overbygning, regler, tsi, referencer,
 ];
 
 const nav = document.querySelector<HTMLElement>('#nav')!;
