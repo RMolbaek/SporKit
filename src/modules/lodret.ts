@@ -1,7 +1,9 @@
 import { BANEDANMARK as rs, vurder, vurderMin, samletStatus } from '../core/rules';
 import { verticalCurve, minVerticalRadius, verticalOrdinate, roundTo } from '../core/formulas';
 import { setReport } from '../core/report';
-import { card, chip, fmt, form, h, loadState, results, saveState, graense, kildeTekst, type Module } from '../ui/dom';
+import { TSI_RV_MIN, TSI_GRADIENT, tsiStatus, TSI_KILDE } from '../core/tsi';
+import { loadSettings } from '../core/rules';
+import { card, chip, fmt, form, h, loadState, results, saveState, graense, kildeTekst, tsiBlock, type Module } from '../ui/dom';
 
 type S = { i1: number; i2: number; Rv: number; V: number };
 const DEF: S = { i1: 6, i2: -4, Rv: 15000, V: 160 };
@@ -57,6 +59,12 @@ export const lodret: Module = {
       const sI2 = vurder(st.i2, rs.stigningMax);
       const total = samletStatus([sR, sRmax, sA, sI1, sI2]);
       const fig = profile(st, vc.T);
+      const set = loadSettings();
+      const rvTsi = vc.konveks ? TSI_RV_MIN.top : TSI_RV_MIN.lavning;
+      const tsiRows = set.tsi ? [
+        { label: `Lodret radius (${vc.konveks ? 'top' : 'lavning'})`, value: `${fmt(st.Rv)} m`, graense: `≥ ${rvTsi} m`, status: tsiStatus(st.Rv >= rvTsi), kilde: `${TSI_KILDE} 4.2.3.5(1)` },
+        { label: 'Største hældning (P1 nye strækninger)', value: `${fmt(Math.max(Math.abs(st.i1), Math.abs(st.i2)), 1)} ‰`, graense: `≤ ${TSI_GRADIENT.p1Maks} ‰`, status: tsiStatus(Math.max(Math.abs(st.i1), Math.abs(st.i2)) <= TSI_GRADIENT.p1Maks), kilde: `${TSI_KILDE} 4.2.3.3(3)` },
+      ] : [];
       out.innerHTML = `
         <div class="summary summary-${total}">
           <div><strong>${vc.konveks ? 'Konveks (top)' : 'Konkav (lavning)'}</strong><span>Δi = ${fmt(vc.di, 1)} ‰ · R<sub>v</sub> ${fmt(st.Rv)} m</span></div>
@@ -72,6 +80,7 @@ export const lodret: Module = {
           { symbol: 'i', label: 'Stigning/fald', value: `${fmt(st.i1, 1)} / ${fmt(st.i2, 1)}`, unit: '‰', status: samletStatus([sI1, sI2]), sub: graense(rs.stigningMax) },
         ])}
         ${fig}
+        ${tsiBlock(tsiRows, `TSI: Spor ved perroner på nye strækninger, hvor vogne kobles til/fra, og nye opstillingsspor: højst ${fmt(TSI_GRADIENT.perron, 1)} ‰. Op til 35 ‰ kun på nye P1-strækninger (glidende gennemsnit over 10 km ≤ 25 ‰, højst 6 km sammenhængende). Pukler i rangerterræn: R<sub>v</sub> ≥ ${TSI_RV_MIN.pukkelTop}/${TSI_RV_MIN.pukkelLavning} m.`)}
         <p class="tip">Ordinat fra tangent i afstand x fra tangentpunkt: y = x² / (2R<sub>v</sub>). Ved perroner og opstillingsspor bør stigningen højst være ${fmt(rs.stigningPerron.normal, 1)} ‰.</p>
       `;
       setReport({
@@ -95,8 +104,9 @@ export const lodret: Module = {
           { label: 'Lodret acceleration', value: `${fmt(vc.av, 3)} m/s²`, graense: graense(rs.lodretAccMax), status: sA, kilde: kildeTekst(rs.lodretAccMax) },
           { label: 'Hældning i₁', value: `${fmt(st.i1, 1)} ‰`, graense: graense(rs.stigningMax), status: sI1, kilde: kildeTekst(rs.stigningMax) },
           { label: 'Hældning i₂', value: `${fmt(st.i2, 1)} ‰`, graense: graense(rs.stigningMax), status: sI2, kilde: kildeTekst(rs.stigningMax) },
+          ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
         ],
-        refs: ['SR87', 'ST16', 'EN13803', 'BN2-93'],
+        refs: ['SR87', 'ST16', 'EN13803', 'BN2-93', ...(tsiRows.length ? ['TSI-INF'] : [])],
         figur: fig,
       });
     };

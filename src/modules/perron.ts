@@ -4,8 +4,9 @@ import {
 } from '../core/perron';
 import { SKINNE_60E2 } from '../core/overbygning';
 import { setReport } from '../core/report';
-import type { Status } from '../core/rules';
-import { card, fmt, form, h, loadState, results, saveState, select, type Module } from '../ui/dom';
+import { loadSettings, type Status } from '../core/rules';
+import { TSI_PERRON_HOEJDER, TSI_PERRON_HOEJDE_STOG, TSI_PERRON_R_MIN, TSI_CANT_PERRON, TSI_PERRON_BQ_TOL, tsiStatus, TSI_KILDE } from '../core/tsi';
+import { card, fmt, form, h, loadState, results, saveState, select, tsiBlock, type Module } from '../ui/dom';
 
 type S = { R: number; hojde: number; h: number; Am: number; Hm: number };
 const DEF: S = { R: 800, hojde: 0, h: 60, Am: 0, Hm: 0 };
@@ -96,6 +97,13 @@ export const perron: Module = {
       const sitTxt = SITUATIONER.find((x) => x[0] === s)![1];
       const total: Status | null = sA === 'overskredet' || sH === 'overskredet' ? 'overskredet' : sA || sH ? 'ok' : null;
 
+      const set = loadSettings();
+      const tsiH = t === '92' || t === '87' ? [...TSI_PERRON_HOEJDER, TSI_PERRON_HOEJDE_STOG] : TSI_PERRON_HOEJDER;
+      const tsiRows = set.tsi && t !== 'oevrig' ? [
+        { label: 'Nominel perronhøjde', value: Href !== null ? `${fmt(Href)} mm` : '–', graense: tsiH.map((x) => fmt(x)).join(' / ') + ' mm', status: tsiStatus(Href !== null && tsiH.includes(Href)), kilde: `${TSI_KILDE} 4.2.9.2${tsiH.length > 2 ? ' og 7.7.4.1 (S-tog)' : ''}` },
+        { label: 'Overhøjde ved perron', value: `${fmt(st.h)} mm`, graense: `≤ ${TSI_CANT_PERRON} mm`, status: tsiStatus(st.h <= TSI_CANT_PERRON), kilde: `${TSI_KILDE} 4.2.4.2(2)` },
+        ...(st.R > 0 && (set.nyStraekning || s === 'nyanlaeg') ? [{ label: 'Radius langs perron (nye strækninger)', value: `${fmt(st.R)} m`, graense: `≥ ${TSI_PERRON_R_MIN} m`, status: tsiStatus(st.R >= TSI_PERRON_R_MIN), kilde: `${TSI_KILDE} 4.2.9.4(1)` }] : []),
+      ] : [];
       const tabel = `
         <table class="tbl tbl-mini">
           <thead><tr><th>Højde [mm]</th>${RADIUS_KOLONNER.map((k) => `<th>${k}</th>`).join('')}</tr></thead>
@@ -124,6 +132,7 @@ export const perron: Module = {
             sub: 'vandret fra kørekant, lodret fra skinneoverkant' },
         ])}
         ${nom.advarsler.length ? `<div class="notice">${nom.advarsler.map((a) => `• ${a}`).join('<br/>')}</div>` : ''}
+        ${tsiBlock(tsiRows, `TSI-perronhøjderne 550/760 mm gælder ved R ≥ ${TSI_PERRON_R_MIN} m. Perronafstanden fastlægges i TSI ud fra installationsgrænsen bq<sub>lim</sub> for profil G1 (EN 15273-3 afsn. 13) med tolerance bq<sub>lim</sub> ≤ bq ≤ bq<sub>lim</sub> + ${TSI_PERRON_BQ_TOL} mm – den beregnes ikke her. BN1-49 måler fra kørekant, TSI fra sporets midte.`)}
         <h3>Tværsnit (fig. 8.1-2)</h3>
         ${fig}
         <h3>Figur 8.2-1 – nominel perronafstand [mm]</h3>
@@ -159,6 +168,7 @@ export const perron: Module = {
         ],
         checks: [
           ...(st.Am > 0 && A !== null ? [{ label: 'Målt perronafstand', value: `${fmt(st.Am)} mm`, graense: `${fmt(A)} ${TOL_TXT(tA)}`, status: sA!, kilde: 'BN1-49-1 fig. 8.2-1 / 9-1 / 11-1' }] : []),
+          ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
           ...(st.Hm > 0 && Href !== null ? [{ label: 'Målt perronhøjde', value: `${fmt(st.Hm)} mm`, graense: `${fmt(Href)} ${TOL_TXT(tH)}`, status: sH!, kilde: 'BN1-49-1 fig. 9-1 / 11-1' }] : []),
         ],
         noter: [
@@ -167,7 +177,7 @@ export const perron: Module = {
           'Minus-tolerancen gælder for et hvilket som helst punkt på perronen i et tværsnit vinkelret på sporet.',
           'Kontrolmåling af perronafstand og perronhøjde: se BN1-18.',
         ],
-        refs: ['BN1-49', 'BN1-18', 'SR87'],
+        refs: ['BN1-49', 'BN1-18', 'SR87', ...(tsiRows.length ? ['TSI-INF'] : [])],
         figur: fig,
       });
     };

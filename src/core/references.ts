@@ -169,11 +169,12 @@ export const REFERENCES: Reference[] = [
   {
     id: 'TSI-INF',
     kort: 'TSI INF',
-    titel: 'Teknisk specifikation for interoperabilitet – Infrastruktur, Forordning (EU) nr. 1299/2014 med senere ændringer',
+    titel: 'Kommissionens forordning (EU) nr. 1299/2014 om TSI for delsystemet «infrastruktur», konsolideret udgave 28.09.2023 (inkl. 2019/776 og 2023/1694)',
     udgiver: 'Europa-Kommissionen',
     type: 'EU-forordning',
-    anvendelse: 'Overhøjde og overhøjderamper (afsnit 4.2.5.3 jf. Sporteknik s. 250).',
-    gennemgaaet: false,
+    anvendelse: 'Overhøjde (4.2.4.2), overhøjdeunderskud (4.2.4.3), pludselig ændring af I (4.2.4.4), radier og hældninger (4.2.3), sporafstand (tabel 4), sporvidde-IAL (tabel 12), konicitet (tabel 10), perroner (4.2.9) og dansk særtilfælde 7.7.4.1.',
+    url: 'https://eur-lex.europa.eu/legal-content/DA/TXT/?uri=CELEX:02014R1299-20230928',
+    gennemgaaet: true,
   },
 ];
 

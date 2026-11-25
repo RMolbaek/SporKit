@@ -12,13 +12,14 @@ import { perron } from './modules/perron';
 import { sikkerhedszone } from './modules/sikkerhedszone';
 import { overbygning } from './modules/overbygning';
 import { regler } from './modules/regler';
+import { tsi } from './modules/tsi';
 import { referencer } from './modules/referencer';
 import { getReport, setReport } from './core/report';
 import { buildReportHtml } from './ui/print';
 
 const MODULES: Module[] = [
   overhoejde, overgangskurve, radius, hastighed, kurveelementer,
-  lodret, sporkontrol, perron, sikkerhedszone, kurveudvidelse, overbygning, regler, referencer,
+  lodret, sporkontrol, perron, sikkerhedszone, kurveudvidelse, overbygning, regler, tsi, referencer,
 ];
 
 const nav = document.querySelector<HTMLElement>('#nav')!;

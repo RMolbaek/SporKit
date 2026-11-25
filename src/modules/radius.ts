@@ -1,7 +1,8 @@
 import { BANEDANMARK as rs, limitI, loadSettings } from '../core/rules';
 import { minRadius, minRadiusMixed, roundTo, cantConstant } from '../core/formulas';
 import { setReport } from '../core/report';
-import { card, fmt, form, h, loadState, results, saveState, type Module } from '../ui/dom';
+import { tsiCantDeficiency, tsiCantMax, tsiStatus, TSI_KILDE, TSI_R_MIN, TSI_CANT_DEFICIENCY_WAG } from '../core/tsi';
+import { card, fmt, form, h, loadState, results, saveState, tsiBlock, type Module } from '../ui/dom';
 
 type S = { V: number; Vmin: number; h: number; I: number };
 const DEF: S = { V: 160, Vmin: 80, h: 160, I: 100 };
@@ -25,6 +26,13 @@ export const radius: Module = {
       const Rb = minRadius(st.V, st.h, st.I, rs);
       const mN = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.normal, LI.normal, rs.overskydendeOverhoejdeMax.normal, rs);
       const mU = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.undtagelse, LI.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs);
+      const hT = tsiCantMax(set.tsiTrafik, set.tsiSpor);
+      const RtsiV = minRadius(st.V, hT, tsiCantDeficiency(st.V), rs);
+      const tsiRows = set.tsi ? [
+        { label: `Mindste radius efter TSI (h = ${hT}, I = ${tsiCantDeficiency(st.V)} mm)`, value: `${fmt(roundTo(RtsiV, 10, 'op'))} m`, graense: 'C·V²/(h<sub>max</sub> + I<sub>max</sub>)', status: 'ok' as const, kilde: `${TSI_KILDE} 4.2.4.2–4.2.4.3` },
+        { label: 'Mindste radius, nye strækninger', value: `${fmt(roundTo(Math.max(mN.R, RtsiV), 10, 'op'))} m`, graense: `≥ ${TSI_R_MIN} m`, status: tsiStatus(Math.max(mN.R, RtsiV) >= TSI_R_MIN), kilde: `${TSI_KILDE} 4.2.3.4(1)` },
+        { label: 'Valgt I mod TSI', value: `${fmt(st.I)} mm`, graense: `≤ ${tsiCantDeficiency(st.V)} mm (godsvogne ${TSI_CANT_DEFICIENCY_WAG} mm)`, status: tsiStatus(st.I <= tsiCantDeficiency(st.V)), kilde: `${TSI_KILDE} 4.2.4.3, tabel 8` },
+      ] : [];
       const why = (m: typeof mN) =>
         m.styrende === 'hastighed' ? 'styret af h<sub>max</sub> + I<sub>max</sub>' : 'styret af hastighedsspredningen V/V<sub>min</sub>';
 
@@ -45,6 +53,7 @@ export const radius: Module = {
         ])}
         <p class="tip">Ved blandet trafik skal én overhøjde give I ≤ I<sub>max</sub> for de hurtige tog og E ≤ E<sub>max</sub> for de langsomme.
         Sæt V<sub>min</sub> = V for ren persontrafik. Langskinnespor har desuden mindste radius efter overbygning, fx UIC60 Dmp 400 m og UIC60 Dt 700 m (BN1-66). Radier over ${fmt(rs.radiusRetSpor)} m regnes som ret spor.</p>
+        ${tsiBlock(tsiRows, 'Modvendte kurver med små radier på nye strækninger skal udformes, så bufferlåsning undgås; mellemliggende retlinje efter EN 13803 tabel N.1/N.2 (TSI 4.2.3.4(2)).')}
       `;
       setReport({
         modul: 'Mindste radius',
@@ -61,9 +70,9 @@ export const radius: Module = {
           { label: 'Mindste radius, normal', formel: 'max(R<sub>V</sub>; R<sub>ΔV</sub>)', indsat: '', resultat: `${fmt(mN.R, 1)} m` },
           { label: 'Mindste radius, undtagelse', formel: 'som ovenfor med undtagelsesværdier', indsat: `h ${rs.overhoejdeMax.undtagelse}, I ${LI.undtagelse}, E ${rs.overskydendeOverhoejdeMax.undtagelse}`, resultat: `${fmt(mU.R, 1)} m` },
         ],
-        checks: [],
+        checks: tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
         noter: ['Langskinnespor: mindste radius afhænger af overbygning (BN1-66 afsn. 11).'],
-        refs: ['SR87', 'ST16', 'BN1-66', 'EN13803'],
+        refs: ['SR87', 'ST16', 'BN1-66', 'EN13803', ...(tsiRows.length ? ['TSI-INF'] : [])],
       });
     };
 

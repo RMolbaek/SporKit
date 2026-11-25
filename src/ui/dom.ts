@@ -193,3 +193,20 @@ export interface Module {
   beskrivelse: string;
   render(root: HTMLElement): void;
 }
+
+/* ------------------------------ TSI-sektion ------------------------------ */
+
+export interface TsiRow { label: string; value: string; graense: string; status: Status; kilde: string }
+
+/** Kompakt tabel med TSI INF-kontroller. */
+export function tsiBlock(rows: TsiRow[], note = ''): string {
+  if (!rows.length) return '';
+  const total: Status = rows.some((r) => r.status === 'overskredet') ? 'overskredet' : 'ok';
+  return `<div class="tsi">
+    <div class="tsi-head"><span class="tsi-flag">EU</span><strong>Kontrol mod TSI INF</strong>${chip(total)}</div>
+    <table class="tbl tsi-tbl"><tbody>${rows.map((r) => `
+      <tr><td><div>${r.label}</div><small>${r.kilde.replace('TSI INF (EU) 1299/2014 ', '')}</small></td>
+      <td>${r.value}</td><td>${r.graense}</td><td>${chip(r.status)}</td></tr>`).join('')}</tbody></table>
+    ${note ? `<p class="tip">${note}</p>` : ''}
+  </div>`;
+}

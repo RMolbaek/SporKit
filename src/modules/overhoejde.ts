@@ -3,12 +3,13 @@ import {
   cantConstant, equilibriumCant, cantDeficiency, cantExcess, lateralAcceleration, cantWindow, roundTo,
 } from '../core/formulas';
 import { setReport } from '../core/report';
+import { tsiCurveChecks } from '../core/tsi';
 import { trackCrossSection } from '../ui/track';
-import { card, fmt, form, h, limitText, loadState, results, saveState, chip, graense, kildeTekst, select, type Module } from '../ui/dom';
+import { card, fmt, form, h, limitText, loadState, results, saveState, chip, graense, kildeTekst, select, tsiBlock, type Module } from '../ui/dom';
 
 type S = { R: number; V: number; Vmin: number; h: number };
 const DEF: S = { R: 1200, V: 160, Vmin: 80, h: 110 };
-type Opt = { sporskifte: string; svelle: string };
+type Opt = { sporskifte: string; svelle: string; perron: string };
 
 export const overhoejde: Module = {
   id: 'overhoejde',
@@ -19,7 +20,7 @@ export const overhoejde: Module = {
   beskrivelse: 'Afbalanceret overhøjde, overhøjdeunderskud og -overskud samt tilladt overhøjdeinterval (Sporregler afsn. 2.03).',
   render(root) {
     const st = loadState<S>('overhoejde', DEF);
-    const opt = loadState<Opt>('overhoejde-opt', { sporskifte: 'nej', svelle: 'S99' });
+    const opt = loadState<Opt>('overhoejde-opt', { sporskifte: 'nej', svelle: 'S99', perron: 'nej' });
     const out = h('div', { class: 'out' });
 
     const update = () => {
@@ -52,6 +53,10 @@ export const overhoejde: Module = {
       const pct = (x: number) => `${Math.max(0, Math.min(100, (x / scaleMax) * 100)).toFixed(1)}%`;
       const bar = (w: { lav: number; hoej: number; muligt: boolean }, cls: string) =>
         w.muligt ? `<div class="win ${cls}" style="left:${pct(w.lav)};width:calc(${pct(w.hoej)} - ${pct(w.lav)})"></div>` : '';
+      const tsiRows = set.tsi ? tsiCurveChecks({
+        R: st.R, V: st.V, h: st.h, I: Math.max(0, I), trafik: set.tsiTrafik, spor: set.tsiSpor,
+        perron: opt.perron === 'ja', nyStraekning: set.nyStraekning,
+      }) : [];
       const fig = trackCrossSection({ svelle: opt.svelle as 'S99' | 'S16', h: st.h, V: st.V });
 
       out.innerHTML = `
@@ -87,6 +92,7 @@ export const overhoejde: Module = {
                <button class="btn-link" data-apply="${forslag}">Brug forslag</button></p>`
             : `<p class="tip bad">Radius er for lille til både V = ${st.V} og V<sub>min</sub> = ${st.Vmin} km/t inden for normalbestemmelserne. Øg R, sænk V eller hæv V<sub>min</sub>.</p>`}
         </div>
+        ${tsiBlock(tsiRows, `TSI-indstillinger: ${set.tsiTrafik === 'person' ? 'ren persontrafik' : 'blandet trafik'}, ${set.tsiSpor === 'ballast' ? 'ballasteret' : 'fast'} spor${set.nyStraekning ? ', ny strækning' : ''} (ændres under Regelgrundlag). Godsvogne efter TSI WAG: I ≤ 130 mm ved V ≤ 160 km/t.`)}
         <h3>Tværprofil i kurven (ægte skala)</h3>
         ${fig}
       `;
@@ -120,12 +126,13 @@ export const overhoejde: Module = {
           { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: graense(rs.overhoejdeMax), status: sH, kilde: kildeTekst(rs.overhoejdeMax) },
           { label: 'Overhøjdeunderskud I', value: `${fmt(I, 1)} mm`, graense: graense(LI), status: sI, kilde: kildeTekst(LI) },
           { label: 'Overhøjdeoverskud E', value: `${fmt(E, 1)} mm`, graense: graense(rs.overskydendeOverhoejdeMax), status: sE, kilde: kildeTekst(rs.overskydendeOverhoejdeMax) },
+          ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
         ],
         noter: [
           wN.muligt ? `Tilladt interval (normal): ${fmt(wN.lav)}–${fmt(wN.hoej)} mm. Forslag: h = ${fmt(forslag)} mm.` : 'Der findes intet tilladt overhøjdeinterval efter normalbestemmelserne.',
           'Lavere overhøjde kan være krævet ved perroner, overkørsler og hvor tog skal holde stille (Sporregler afsn. 2.03).',
         ],
-        refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6'],
+        refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6', ...(tsiRows.length ? ['TSI-INF'] : [])],
         figur: fig,
       });
     };
@@ -143,6 +150,7 @@ export const overhoejde: Module = {
     );
     f.append(
       select('Krumt sporskifte (vigespor / U-krumt)', 'sporskifte', [['nej', 'Nej – almindeligt spor'], ['ja', 'Ja – I ≤ 80 mm ved V > 100']], opt, update),
+      select('Perron hvor tog standser (TSI: h ≤ 110 mm)', 'perron', [['nej', 'Nej'], ['ja', 'Ja']], opt, update),
       select('Svelle i tegning', 'svelle', [['S99', 'S99 (Dmp)'], ['S16', 'S16 (Dme)']], opt, update),
     );
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));

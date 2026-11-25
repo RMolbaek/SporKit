@@ -17,7 +17,9 @@
 | | **Sikkerhedszoner på perron** | Sikkerheds- og opholdszone, mindste perronbredde, afstribning, skilte og passagertæthed efter BN1-9-2 |
 | | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
 | Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
-| Grundlag | **Regelgrundlag / Referencer** | Grænseværdier med kildestatus og referenceliste |
+| Grundlag | **Regelgrundlag** | Grænseværdier med kildestatus og indstillinger (skinne, TSI-trafik, sportype, nyanlæg) |
+| | **TSI INF** | Alle relevante grænser fra TSI INF (EU) 1299/2014 slået op efter hastighed |
+| | **Referencer** | Referenceliste med anvendelse og gennemgangsstatus |
 
 Alle moduler kan eksporteres som **PDF-beregningsrapport** med input, beregningsgang med indsatte tal, kontrol mod grænseværdier, referencer og signaturfelter (knappen *Eksportér PDF* → *Gem som PDF*).
 
@@ -34,6 +36,8 @@ Alle grænseværdier ligger samlet i [`src/core/rules.ts`](src/core/rules.ts) me
 - **sekundær** – gengivet fra Banedanmarks lærebog *Sporteknik* (2016), som citerer Sporregler (fx h ≤ 160/180 mm, I ≤ 100 mm, I-undtagelse 130/153/160 mm, stigning, lodret radius)
 - **antaget** – ingen dansk kilde fundet endnu (fx E, dh/dt, dI/dt, rampe 1:(k·V)) – skal kontrolleres
 - **verificeret** – kontrolleret i det gældende regelsæt
+
+**TSI INF** ([`src/core/tsi.ts`](src/core/tsi.ts)) er gengivet fra den konsoliderede udgave af forordning (EU) nr. 1299/2014 af 28.09.2023 og kontrolleres som et ekstra lag i modulerne for overhøjde, hastighed, radius, lodret kurve, pilhøjde/sporvidde og perron (kan slås fra under *Regelgrundlag*).
 
 Perrontabellerne i [`src/core/perron.ts`](src/core/perron.ts) er gengivet fra BN1-49-1 (2006). Referencelisten ligger i [`src/core/references.ts`](src/core/references.ts).
 

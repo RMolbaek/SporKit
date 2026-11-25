@@ -177,3 +177,42 @@ describe('BN1-9-2 sikkerhedszoner', () => {
     expect(opholdsAreal(6, 200, 1.7, 40)).toBeCloseTo(820, 6);
   });
 });
+
+import {
+  tsiCantMax, tsiCantDeficiency, tsiAbruptChange, tsiTrackCentres, tsiGaugeIal, tsiConicity, tsiCantSmallRadius, tsiCurveChecks,
+} from '../src/core/tsi';
+
+describe('TSI INF (EU) 1299/2014', () => {
+  it('tabel 7 og 8', () => {
+    expect(tsiCantMax('blandet', 'ballast')).toBe(160);
+    expect(tsiCantMax('blandet', 'fast')).toBe(170);
+    expect(tsiCantMax('person', 'ballast')).toBe(180);
+    expect(tsiCantDeficiency(250)).toBe(153);
+    expect(tsiCantDeficiency(320)).toBe(100);
+    expect(tsiCantSmallRadius(260)).toBeCloseTo(140, 6);
+  });
+  it('4.2.4.4, tabel 4, 10 og 12', () => {
+    expect(tsiAbruptChange(50)).toBe(130);
+    expect(tsiAbruptChange(160)).toBe(125);
+    expect(tsiAbruptChange(220)).toBe(85);
+    expect(tsiAbruptChange(250)).toBe(25);
+    expect(tsiAbruptChange(40, 60, 70)).toBe(150);
+    expect(tsiTrackCentres(160)).toBeNull();
+    expect(tsiTrackCentres(180)).toBe(3.8);
+    expect(tsiTrackCentres(320)).toBe(4.5);
+    expect(tsiGaugeIal(100)).toEqual({ min: 1426, max: 1470 });
+    expect(tsiGaugeIal(200)).toEqual({ min: 1428, max: 1463 });
+    expect(tsiConicity(50)).toBeNull();
+    expect(tsiConicity(250)).toBe(0.2);
+  });
+  it('samlet kurvekontrol', () => {
+    expect(tsiCurveChecks({ R: 280, V: 100, h: 150, I: 80, trafik: 'blandet', spor: 'ballast', perron: false, nyStraekning: true })
+      .every((x) => x.status === 'ok')).toBe(true); // (280 − 50)/1,5 = 153 mm ≥ 150 mm
+    const c = tsiCurveChecks({ R: 250, V: 100, h: 150, I: 80, trafik: 'blandet', spor: 'ballast', perron: true, nyStraekning: true });
+    const bad = c.filter((x) => x.status === 'overskredet').map((x) => x.label);
+    expect(bad).toContain('Overhøjde ved perron');
+    expect(bad).toContain('Overhøjde ved R < 305 m');
+    expect(bad).toContain('Radius langs perron');
+    expect(bad).not.toContain('Projekteret overhøjde');
+  });
+});

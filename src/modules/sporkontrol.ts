@@ -1,10 +1,11 @@
 import { versine, radiusFromVersine, equilibriumCant, maxSpeed } from '../core/formulas';
-import { BANEDANMARK as rs } from '../core/rules';
+import { BANEDANMARK as rs, loadSettings } from '../core/rules';
+import { tsiGaugeIal, tsiStatus, TSI_KILDE } from '../core/tsi';
 import { setReport } from '../core/report';
-import { card, fmt, form, h, loadState, results, saveState, type Module } from '../ui/dom';
+import { card, fmt, form, h, loadState, results, saveState, tsiBlock, type Module } from '../ui/dom';
 
-type S = { R: number; c: number; f: number; h1: number; h2: number; b: number; hm: number; I: number };
-const DEF: S = { R: 800, c: 20, f: 62, h1: 55, h2: 40, b: 3, hm: 110, I: 100 };
+type S = { R: number; c: number; f: number; h1: number; h2: number; b: number; hm: number; I: number; sv: number; Vs: number };
+const DEF: S = { R: 800, c: 20, f: 62, h1: 55, h2: 40, b: 3, hm: 110, I: 100, sv: 0, Vs: 160 };
 
 export const sporkontrol: Module = {
   id: 'sporkontrol',
@@ -26,6 +27,11 @@ export const sporkontrol: Module = {
       const Rref = Rm;
       const Vm = maxSpeed(Rref, st.hm, st.I, rs);
       const ha = equilibriumCant(Vm, Rref, rs);
+      const ial = tsiGaugeIal(st.Vs);
+      const set = loadSettings();
+      const tsiRows = set.tsi && st.sv > 0 ? [
+        { label: `Målt sporvidde ved V = ${st.Vs} km/t`, value: `${fmt(st.sv)} mm`, graense: `${fmt(ial.min)} – ${fmt(ial.max)} mm`, status: tsiStatus(st.sv >= ial.min && st.sv <= ial.max), kilde: `${TSI_KILDE} 4.2.8.4, tabel 12` },
+      ] : [];
       const bases = [10, 20].map((c) => ({ c, f: versine(st.R, c) }));
       out.innerHTML = `
         <h3>Pilhøjde for radius</h3>
@@ -42,6 +48,9 @@ export const sporkontrol: Module = {
         ${results([
           { symbol: 'v', label: `Vridning over ${fmt(st.b, 1)} m`, value: fmt(tw, 2), unit: 'mm/m', big: true, sub: `|h₁ − h₂| / b = ${fmt(twSum)} mm / ${fmt(st.b, 1)} m` },
         ])}
+        <h3>Sporvidde – grænse for øjeblikkeligt indgreb</h3>
+        ${results([{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
+        ${tsiBlock(tsiRows)}
         <p class="tip">Målebaser iht. BN1-38: 1½ eller 2, 2½ eller 3, 6, 9, 12 og 15 m. Grænseværdier for vridning afhænger af fejlklasse og findes i BN1-38. Eksempel fra Sporteknik: h₁ = 55, h₂ = 40, b = 3 m → 5 mm/m.</p>
       `;
       setReport({
@@ -61,9 +70,9 @@ export const sporkontrol: Module = {
           { label: 'Hastighed', formel: 'V = √(R·(h + I)/C)', indsat: `√(${fmt(Rm, 1)}·(${st.hm} + ${st.I})/11,80)`, resultat: `${fmt(Vm, 1)} km/t` },
           { label: 'Vridning', formel: 'v = |h₁ − h₂|/b', indsat: `|${st.h1} − ${st.h2}|/${fmt(st.b, 1)}`, resultat: `${fmt(tw, 2)} mm/m` },
         ],
-        checks: [],
-        noter: ['Grænseværdier for vridning og overhøjdens ujævnhed fremgår af BN1-38 (fejlklasser).'],
-        refs: ['BN1-38', 'ST16', 'EN13848', 'SR87'],
+        checks: tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
+        noter: ['Grænseværdier for vridning og overhøjdens ujævnhed fremgår af BN1-38 (fejlklasser). TSI INF 4.2.8.3 henviser for vridning til EN 13848-5 og kræver mindst én målebase mellem 2 og 5 m.'],
+        refs: ['BN1-38', 'ST16', 'EN13848', 'SR87', 'TSI-INF'],
       });
     };
     const f = form<keyof S>([
@@ -75,6 +84,8 @@ export const sporkontrol: Module = {
       { key: 'h1', label: 'Målt overhøjde, punkt 1', symbol: 'h₁', unit: 'mm', min: -50, max: 200, step: 1 },
       { key: 'h2', label: 'Målt overhøjde, punkt 2', symbol: 'h₂', unit: 'mm', min: -50, max: 200, step: 1 },
       { key: 'b', label: 'Målebase', symbol: 'b', unit: 'm', min: 1, max: 20, step: 0.5 },
+      { key: 'sv', label: 'Målt sporvidde (0 = ingen)', symbol: 'G', unit: 'mm', min: 0, max: 1480, step: 1 },
+      { key: 'Vs', label: 'Hastighed (til sporviddegrænse)', symbol: 'V', unit: 'km/t', min: 10, max: 300, step: 5 },
     ], st, update);
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));
     update();

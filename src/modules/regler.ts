@@ -12,18 +12,29 @@ export const regler: Module = {
   beskrivelse: 'Grænseværdier, konstanter og indstillinger, som SporKit regner med – med kilde og kildestatus.',
   render(root) {
     const set = loadSettings();
-    const st = { skinne: set.skinne as string, saerlige: set.saerligeTogsaet ? 'ja' : 'nej' };
+    const st = {
+      skinne: set.skinne as string, saerlige: set.saerligeTogsaet ? 'ja' : 'nej',
+      tsi: set.tsi ? 'ja' : 'nej', trafik: set.tsiTrafik as string, spor: set.tsiSpor as string, ny: set.nyStraekning ? 'ja' : 'nej',
+    };
     const limits: Limit[] = [
       rs.overhoejdeMax, rs.manglendeOverhoejdeMax, rs.manglendeOverhoejdeSporskifte, rs.overskydendeOverhoejdeMax,
       rs.dhdtMax, rs.dIdtMax, rs.dhdsMax, rs.rampeFaktor,
       rs.stigningMax, rs.stigningPerron, rs.lodretRadiusMin, rs.lodretRadiusMax, rs.lodretAccMax,
     ];
     const save = () => {
-      saveSettings({ skinne: st.skinne as '60E2' | 'DSB45', saerligeTogsaet: st.saerlige === 'ja' });
+      saveSettings({
+        skinne: st.skinne as '60E2' | 'DSB45', saerligeTogsaet: st.saerlige === 'ja',
+        tsi: st.tsi === 'ja', tsiTrafik: st.trafik as 'blandet' | 'person', tsiSpor: st.spor as 'ballast' | 'fast', nyStraekning: st.ny === 'ja',
+      });
     };
     const settings = h('div', { class: 'fields' },
       select('Skinneprofil', 'skinne', [['60E2', '60E2 / DSB60 (A ≤ 22,5 t)'], ['DSB45', 'DSB45 (45E2)']], st, save),
       select('Særlige togsæt (I ≤ 160 mm)', 'saerlige', [['nej', 'Nej'], ['ja', 'Ja']], st, save),
+      h('div', { class: 'settings-sep' }, 'TSI INF'),
+      select('Kontrollér også mod TSI INF', 'tsi', [['ja', 'Ja'], ['nej', 'Nej']], st, save),
+      select('Trafik (TSI tabel 7)', 'trafik', [['blandet', 'Blandet trafik / gods'], ['person', 'Ren persontrafik']], st, save),
+      select('Sporkonstruktion', 'spor', [['ballast', 'Ballasteret spor'], ['fast', 'Fast spor (ikke ballasteret)']], st, save),
+      select('Nyanlæg (krav til nye strækninger)', 'ny', [['nej', 'Nej – eksisterende spor'], ['ja', 'Ja – ny strækning']], st, save),
     );
     const body = `
       <div class="notice">

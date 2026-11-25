@@ -29,7 +29,17 @@ export type Skinne = '60E2' | 'DSB45';
 export interface Settings {
   skinne: Skinne;
   saerligeTogsaet: boolean;
+  /** Kontrollér også mod TSI INF */
+  tsi: boolean;
+  tsiTrafik: 'blandet' | 'person';
+  tsiSpor: 'ballast' | 'fast';
+  /** Nyanlæg (TSI-krav for nye strækninger gælder) */
+  nyStraekning: boolean;
 }
+
+export const DEFAULT_SETTINGS: Settings = {
+  skinne: '60E2', saerligeTogsaet: false, tsi: true, tsiTrafik: 'blandet', tsiSpor: 'ballast', nyStraekning: false,
+};
 
 export interface RuleSet {
   id: string;
@@ -181,14 +191,14 @@ export const BANEDANMARK: RuleSet = {
 };
 
 /** Undtagelsesværdien for I afhænger af skinne, hastighed og togtype (Sporregler 2.03). */
-export function iUndtagelse(V: number, s: Settings): number {
+export function iUndtagelse(V: number, s: Pick<Settings, 'skinne' | 'saerligeTogsaet'>): number {
   if (s.skinne === 'DSB45') return 130;
   if (s.saerligeTogsaet) return 160;
   return V <= 140 ? 130 : 153;
 }
 
 /** Grænsen for I tilpasset hastighed og indstillinger. */
-export function limitI(rs: RuleSet, V: number, s: Settings): Limit {
+export function limitI(rs: RuleSet, V: number, s: Pick<Settings, 'skinne' | 'saerligeTogsaet'>): Limit {
   return { ...rs.manglendeOverhoejdeMax, undtagelse: iUndtagelse(V, s) };
 }
 
@@ -222,9 +232,9 @@ const SKEY = 'sporkit:settings';
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SKEY);
-    if (raw) return { skinne: '60E2', saerligeTogsaet: false, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
   } catch { /* */ }
-  return { skinne: '60E2', saerligeTogsaet: false };
+  return { ...DEFAULT_SETTINGS };
 }
 export function saveSettings(s: Settings): void {
   try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch { /* */ }
