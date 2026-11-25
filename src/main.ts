@@ -8,6 +8,7 @@ import { kurveelementer } from './modules/kurveelementer';
 import { lodret } from './modules/lodret';
 import { sporkontrol } from './modules/sporkontrol';
 import { kurveudvidelse } from './modules/kurveudvidelse';
+import { perron } from './modules/perron';
 import { overbygning } from './modules/overbygning';
 import { regler } from './modules/regler';
 import { referencer } from './modules/referencer';
@@ -16,7 +17,7 @@ import { buildReportHtml } from './ui/print';
 
 const MODULES: Module[] = [
   overhoejde, overgangskurve, radius, hastighed, kurveelementer,
-  lodret, sporkontrol, kurveudvidelse, overbygning, regler, referencer,
+  lodret, sporkontrol, perron, kurveudvidelse, overbygning, regler, referencer,
 ];
 
 const nav = document.querySelector<HTMLElement>('#nav')!;

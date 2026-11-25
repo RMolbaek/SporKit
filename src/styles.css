@@ -209,6 +209,13 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .dlg input { border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: 10px; padding: 10px 12px; font: 15px var(--font); }
 .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 #print-root { display: none; }
+.scroll-x { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.tbl-mini { font-size: 12.5px; }
+.tbl-mini th, .tbl-mini td { padding: 6px 5px; text-align: right; white-space: nowrap; }
+.tbl-mini th:first-child, .tbl-mini td:first-child { text-align: left; }
+.tbl-mini td.hit { background: var(--accent-soft); font-weight: 700; box-shadow: inset 0 0 0 2px var(--accent); border-radius: 4px; }
+.viz .pf-plat { fill: #cfc8b8; stroke: #7a7466; stroke-width: 6; }
+.viz .pf-ground { fill: #8a6f52; }
 
 /* ---------- overhøjdevindue ---------- */
 .window { margin-top: 16px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 14px; }

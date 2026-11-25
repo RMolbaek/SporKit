@@ -107,3 +107,44 @@ describe('avancerede formler', () => {
     expect(iUndtagelse(160, { skinne: 'DSB45', saerligeTogsaet: false })).toBe(130);
   });
 });
+
+import { nominelPerronafstand, afstandTolerance, hoejdeTolerance, nominelHoejde, iTolerance, perronGlobal } from '../src/core/perron';
+
+describe('BN1-49 spor og perron', () => {
+  it('nominel perronafstand fra figur 8.2-1', () => {
+    expect(nominelPerronafstand(550, 0, false).afstand).toBe(945);
+    expect(nominelPerronafstand(550, 450, false).afstand).toBe(980);
+    expect(nominelPerronafstand(260, 270, false).afstand).toBe(860);
+    expect(nominelPerronafstand(920, 3000, false).afstand).toBe(960);
+    expect(nominelPerronafstand(550, 210, false).afstand).toBe(1020 + 60);
+    expect(nominelPerronafstand(550, 210, true).afstand).toBe(1020 + 60 + 50);
+    expect(nominelPerronafstand(550, 180, false).afstand).toBeNull();
+    expect(nominelPerronafstand(1300, 0, false).afstand).toBeNull();
+  });
+  it('tolerancer figur 9-1 og 11-1', () => {
+    expect(afstandTolerance('26', 'drift', 260)).toEqual([50, 150]);
+    expect(afstandTolerance('35', 'drift', 350)).toEqual([10, 150]);
+    expect(afstandTolerance('55', 'drift', 550)).toEqual([10, 100]);
+    expect(afstandTolerance('55', 'sporjustering', 550)).toEqual([0, 90]);
+    expect(hoejdeTolerance('92', 'drift')).toEqual([null, 10]);
+    expect(hoejdeTolerance('35', 'sporfornyelse')).toEqual([20, 0]);
+    expect(hoejdeTolerance('92', 'nyanlaeg')).toEqual([30, 0]);
+    expect(nominelHoejde('72', 'sporjustering')).toBe(760);
+    expect(nominelHoejde('87', 'drift')).toBe(920);
+    expect(iTolerance(955, 945, [0, 20])).toBe(true);
+    expect(iTolerance(940, 945, [0, 20])).toBe(false);
+  });
+  it('perron uden overhøjde', () => {
+    const g = perronGlobal(945, 550, 0, 'inder');
+    expect(g.vandret).toBeCloseTo(945, 6);
+    expect(g.lodret).toBeCloseTo(550, 6);
+  });
+  it('perron med overhøjde i kurvens inderside ligger længere ude og lavere', () => {
+    const g = perronGlobal(960, 560, 60, 'inder');
+    expect(g.vandret).toBeGreaterThan(960);
+    expect(g.lodret).toBeLessThan(560);
+    const y = perronGlobal(960, 560, 60, 'yder');
+    expect(y.vandret).toBeLessThan(960);
+    expect(y.lodret).toBeGreaterThan(560);
+  });
+});

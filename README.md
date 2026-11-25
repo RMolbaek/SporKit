@@ -4,15 +4,21 @@
 
 ## Moduler
 
-| Modul | Beregner |
-|---|---|
-| **Overhøjde** | Ligevægtsoverhøjde h<sub>eq</sub>, manglende overhøjde I, overskydende overhøjde E, sideacceleration a<sub>q</sub>, tilladt overhøjdeinterval og forslag til h |
-| **Overgangskurve** | Mindste længde (dh/dt, dI/dt, rampe 1:(k·V), stejleste rampe), kontrol af valgt længde og klotoidens geometri (A, p, τ, X/Y, X<sub>m</sub>) |
-| **Mindste radius** | R<sub>min</sub> for valgt h og I, samt ved blandet trafik (V og V<sub>min</sub>) |
-| **Største hastighed** | V<sub>max</sub> for given R, h og I, med graf over V(R) |
-| **Regelgrundlag** | Oversigt over alle grænseværdier og konstanter |
+| Gruppe | Modul | Beregner |
+|---|---|---|
+| Linjeføring | **Overhøjde** | h<sub>a</sub>, I, E, a<sub>q</sub>, tilladt overhøjdeinterval, krumme sporskifter, tværprofil i ægte skala |
+| | **Overgangskurve og rampe** | Mindste længde (dh/dt, dI/dt, rampe, stejleste rampe), også mellem ensvendte buer; klotoide, vridning fra rampe |
+| | **Mindste radius** | R<sub>min</sub> for valgt h og I og ved blandet trafik |
+| | **Største hastighed** | V<sub>max</sub> med hastighedsafhængig I-undtagelse og graf |
+| | **Kurveelementer** | Tangentlængde, buelængde, toppunktsafstand med klotoider |
+| Længdeprofil | **Lodret kurve** | T, pilhøjde, a<sub>v</sub>, kontrol af R<sub>v</sub> og stigning |
+| I sporet | **Pilhøjde og vridning** | Pilhøjde ↔ radius, vridning over målebase, hastighed fra målt radius |
+| | **Spor og perron** | Nominel perronafstand og tolerancer efter BN1-49-1 (drift, nyanlæg, fornyelse, sporjustering) |
+| | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
+| Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
+| Grundlag | **Regelgrundlag / Referencer** | Grænseværdier med kildestatus og referenceliste |
 
-Hver kontrol vurderes som **OK** (≤ normalværdi), **Undtagelse** (≤ undtagelsesværdi) eller **Overskredet**.
+Alle moduler kan eksporteres som **PDF-beregningsrapport** med input, beregningsgang med indsatte tal, kontrol mod grænseværdier, referencer og signaturfelter (knappen *Eksportér PDF* → *Gem som PDF*).
 
 ## Grundformler
 
@@ -22,7 +28,13 @@ Hver kontrol vurderes som **OK** (≤ normalværdi), **Undtagelse** (≤ undtage
 
 ## ⚠️ Grænseværdier
 
-Alle grænseværdier ligger samlet i [`src/core/rules.ts`](src/core/rules.ts). De er et **arbejdsgrundlag og ikke verificeret** mod den gældende udgave af Banedanmarks sporregler. Når en værdi er kontrolleret, skal kilden (dokument, afsnit, udgave) skrives i `note`, og `verificeret` sættes til `true`.
+Alle grænseværdier ligger samlet i [`src/core/rules.ts`](src/core/rules.ts) med en kildestatus:
+
+- **sekundær** – gengivet fra Banedanmarks lærebog *Sporteknik* (2016), som citerer Sporregler (fx h ≤ 160/180 mm, I ≤ 100 mm, I-undtagelse 130/153/160 mm, stigning, lodret radius)
+- **antaget** – ingen dansk kilde fundet endnu (fx E, dh/dt, dI/dt, rampe 1:(k·V)) – skal kontrolleres
+- **verificeret** – kontrolleret i det gældende regelsæt
+
+Perrontabellerne i [`src/core/perron.ts`](src/core/perron.ts) er gengivet fra BN1-49-1 (2006). Referencelisten ligger i [`src/core/references.ts`](src/core/references.ts).
 
 SporKit er et hjælpeværktøj og erstatter ikke projektering efter gældende banenormer.
 
