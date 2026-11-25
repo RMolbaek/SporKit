@@ -1,25 +1,30 @@
-import { BANEDANMARK as rs } from '../core/rules';
+import { BANEDANMARK as rs, limitI, loadSettings } from '../core/rules';
 import { minRadius, minRadiusMixed, roundTo, cantConstant } from '../core/formulas';
+import { setReport } from '../core/report';
 import { card, fmt, form, h, loadState, results, saveState, type Module } from '../ui/dom';
 
 type S = { V: number; Vmin: number; h: number; I: number };
-const DEF: S = { V: 160, Vmin: 80, h: 150, I: 100 };
+const DEF: S = { V: 160, Vmin: 80, h: 160, I: 100 };
 
 export const radius: Module = {
   id: 'radius',
+  gruppe: 'Linjeføring',
   titel: 'Mindste radius',
   kort: 'Radius',
   ikon: '◠',
-  beskrivelse: 'Mindste kurveradius for en given hastighed – også ved blandet person- og godstrafik.',
+  beskrivelse: 'Mindste kurveradius for en given hastighed – også ved blandet person- og godstrafik (Sporregler afsn. 2.02–2.04).',
   render(root) {
-    const st = loadState<S>('radius', DEF);
+    const st = loadState<S>('radius2', DEF);
     const out = h('div', { class: 'out' });
 
     const update = () => {
-      saveState('radius', st);
-      const Rbruger = minRadius(st.V, st.h, st.I, rs);
-      const mN = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.normal, rs.manglendeOverhoejdeMax.normal, rs.overskydendeOverhoejdeMax.normal, rs);
-      const mU = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.undtagelse, rs.manglendeOverhoejdeMax.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs);
+      saveState('radius2', st);
+      const set = loadSettings();
+      const LI = limitI(rs, st.V, set);
+      const C = cantConstant(rs);
+      const Rb = minRadius(st.V, st.h, st.I, rs);
+      const mN = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.normal, LI.normal, rs.overskydendeOverhoejdeMax.normal, rs);
+      const mU = minRadiusMixed(st.V, st.Vmin, rs.overhoejdeMax.undtagelse, LI.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs);
       const why = (m: typeof mN) =>
         m.styrende === 'hastighed' ? 'styret af h<sub>max</sub> + I<sub>max</sub>' : 'styret af hastighedsspredningen V/V<sub>min</sub>';
 
@@ -29,26 +34,45 @@ export const radius: Module = {
           <div class="summary-val">${fmt(roundTo(mN.R, 10, 'op'))} m</div>
         </div>
         ${results([
-          { symbol: 'R<sub>min</sub>', label: 'Med valgt h og I', value: fmt(roundTo(Rbruger, 10, 'op')), unit: 'm', big: true,
-            sub: `R = ${fmt(cantConstant(rs), 2)}·V² / (h + I) = ${fmt(Rbruger, 1)} m` },
+          { symbol: 'R<sub>min</sub>', label: 'Med valgt h og I', value: fmt(roundTo(Rb, 10, 'op')), unit: 'm', big: true,
+            sub: `R = ${fmt(C, 2)}·V² / (h + I) = ${fmt(Rb, 1)} m` },
           { symbol: 'R<sub>min,u</sub>', label: 'Undtagelse, blandet trafik', value: fmt(roundTo(mU.R, 10, 'op')), unit: 'm', big: true,
-            status: 'undtagelse', sub: why(mU) },
+            status: 'undtagelse', sub: `${why(mU)} · I<sub>max</sub> = ${LI.undtagelse} mm` },
           { symbol: 'R<sub>V</sub>', label: 'Krav fra hastighed (normal)', value: fmt(mN.Rhast, 0), unit: 'm',
-            sub: `h = ${rs.overhoejdeMax.normal}, I = ${rs.manglendeOverhoejdeMax.normal} mm` },
+            sub: `h = ${rs.overhoejdeMax.normal}, I = ${LI.normal} mm` },
           { symbol: 'R<sub>ΔV</sub>', label: 'Krav fra spredning (normal)', value: fmt(mN.Rspred, 0), unit: 'm',
-            sub: `C·(V² − V<sub>min</sub>²) / (I + E), E = ${rs.overskydendeOverhoejdeMax.normal} mm` },
+            sub: `C·(V² − V<sub>min</sub>²) / (I + E)` },
         ])}
-        <p class="tip">Ved blandet trafik skal der findes én overhøjde, der både giver I ≤ I<sub>max</sub> for de hurtige
-        tog og E ≤ E<sub>max</sub> for de langsomme. Sæt V<sub>min</sub> = V for ren persontrafik.</p>
+        <p class="tip">Ved blandet trafik skal én overhøjde give I ≤ I<sub>max</sub> for de hurtige tog og E ≤ E<sub>max</sub> for de langsomme.
+        Sæt V<sub>min</sub> = V for ren persontrafik. Langskinnespor har desuden mindste radius efter overbygning, fx UIC60 Dmp 400 m og UIC60 Dt 700 m (BN1-66). Radier over ${fmt(rs.radiusRetSpor)} m regnes som ret spor.</p>
       `;
+      setReport({
+        modul: 'Mindste radius',
+        inputs: [
+          { label: 'Hastighed', symbol: 'V', value: fmt(st.V), unit: 'km/t' },
+          { label: 'Laveste hastighed', symbol: 'V<sub>min</sub>', value: fmt(st.Vmin), unit: 'km/t' },
+          { label: 'Overhøjde', symbol: 'h', value: fmt(st.h), unit: 'mm' },
+          { label: 'Overhøjdeunderskud', symbol: 'I', value: fmt(st.I), unit: 'mm' },
+        ],
+        steps: [
+          { label: 'Mindste radius (valgt h, I)', formel: 'R = C·V²/(h + I)', indsat: `${fmt(C, 3)}·${st.V}²/(${st.h} + ${st.I})`, resultat: `${fmt(Rb, 1)} m` },
+          { label: 'Krav fra hastighed', formel: 'R<sub>V</sub> = C·V²/(h<sub>max</sub> + I<sub>max</sub>)', indsat: `${fmt(C, 3)}·${st.V}²/(${rs.overhoejdeMax.normal} + ${LI.normal})`, resultat: `${fmt(mN.Rhast, 1)} m` },
+          { label: 'Krav fra spredning', formel: 'R<sub>ΔV</sub> = C·(V² − V<sub>min</sub>²)/(I<sub>max</sub> + E<sub>max</sub>)', indsat: `${fmt(C, 3)}·(${st.V}² − ${st.Vmin}²)/(${LI.normal} + ${rs.overskydendeOverhoejdeMax.normal})`, resultat: `${fmt(mN.Rspred, 1)} m` },
+          { label: 'Mindste radius, normal', formel: 'max(R<sub>V</sub>; R<sub>ΔV</sub>)', indsat: '', resultat: `${fmt(mN.R, 1)} m` },
+          { label: 'Mindste radius, undtagelse', formel: 'som ovenfor med undtagelsesværdier', indsat: `h ${rs.overhoejdeMax.undtagelse}, I ${LI.undtagelse}, E ${rs.overskydendeOverhoejdeMax.undtagelse}`, resultat: `${fmt(mU.R, 1)} m` },
+        ],
+        checks: [],
+        noter: ['Langskinnespor: mindste radius afhænger af overbygning (BN1-66 afsn. 11).'],
+        refs: ['SR87', 'ST16', 'BN1-66', 'EN13803'],
+      });
     };
 
     const f = form<keyof S>(
       [
         { key: 'V', label: 'Hastighed', symbol: 'V', unit: 'km/t', min: 10, max: 300, step: 5 },
         { key: 'Vmin', label: 'Laveste hastighed (gods)', symbol: 'V<sub>min</sub>', unit: 'km/t', min: 0, max: 300, step: 5 },
-        { key: 'h', label: 'Overhøjde', symbol: 'h', unit: 'mm', min: 0, max: 160, step: 5 },
-        { key: 'I', label: 'Tilladt manglende overhøjde', symbol: 'I', unit: 'mm', min: 0, max: 150, step: 5 },
+        { key: 'h', label: 'Overhøjde', symbol: 'h', unit: 'mm', min: 0, max: 180, step: 5 },
+        { key: 'I', label: 'Tilladt overhøjdeunderskud', symbol: 'I', unit: 'mm', min: 0, max: 160, step: 5 },
       ],
       st,
       update,

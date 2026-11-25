@@ -1,4 +1,4 @@
-import type { Limit, Status } from '../core/rules';
+import type { Limit, Status, Kildestatus } from '../core/rules';
 
 export const fmt = (x: number, d = 0): string =>
   Number.isFinite(x)
@@ -139,6 +139,42 @@ export function limitText(l: Limit): string {
     : `normal ≤ ${fmt(l.normal)} · undt. ≤ ${fmt(l.undtagelse)} ${l.unit}`;
 }
 
+export const KILDESTATUS_TEKST: Record<Kildestatus, string> = {
+  verificeret: 'Verificeret',
+  sekundaer: 'Sekundær kilde',
+  antaget: 'Antaget',
+};
+
+/** Kort kildetekst til rapporter og tabeller. */
+export function kildeTekst(l: Limit): string {
+  return `${l.kilde.join(', ')} · ${KILDESTATUS_TEKST[l.status].toLowerCase()}`;
+}
+
+export function kildeChip(l: Limit): string {
+  const cls = l.status === 'verificeret' ? 'ok' : l.status === 'sekundaer' ? 'info' : 'undtagelse';
+  return `<span class="chip chip-${cls}" title="${l.kilde.join(', ')}">${KILDESTATUS_TEKST[l.status]}</span>`;
+}
+
+/** Grænsetekst til rapport: "100 / 130 mm" */
+export function graense(l: Limit, prefix = '≤'): string {
+  return l.normal === l.undtagelse ? `${prefix} ${fmt(l.normal, l.normal % 1 ? 1 : 0)} ${l.unit}` : `${prefix} ${fmt(l.normal, l.normal % 1 ? 1 : 0)} / ${fmt(l.undtagelse, l.undtagelse % 1 ? 1 : 0)} ${l.unit}`;
+}
+
+/** Valgfelt (select) */
+export function select<K extends string>(
+  label: string, key: K, options: [string, string][], state: Record<K, string>, onChange: () => void,
+): HTMLElement {
+  const id = `s-${key}-${Math.random().toString(36).slice(2, 7)}`;
+  const sel = h('select', { id });
+  for (const [v, t] of options) {
+    const o = h('option', { value: v }, t);
+    if (state[key] === v) o.selected = true;
+    sel.append(o);
+  }
+  sel.addEventListener('change', () => { state[key] = sel.value; onChange(); });
+  return h('div', { class: 'field' }, h('label', { for: id }, h('span', { class: 'lbl' }, label)), h('div', { class: 'inp inp-sel' }, sel));
+}
+
 export function card(title: string, body: HTMLElement | string, extraClass = ''): HTMLElement {
   const c = h('section', { class: `card ${extraClass}` }, h('h2', {}, title));
   const b = h('div', { class: 'card-body' });
@@ -149,6 +185,7 @@ export function card(title: string, body: HTMLElement | string, extraClass = '')
 }
 
 export interface Module {
+  gruppe: 'Linjeføring' | 'Længdeprofil' | 'I sporet' | 'Overbygning' | 'Grundlag';
   id: string;
   titel: string;
   kort: string;

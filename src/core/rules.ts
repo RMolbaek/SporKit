@@ -1,114 +1,199 @@
 /**
  * Grænseværdier for sporgeometri – Banedanmark-profil.
  *
- * VIGTIGT: Værdierne herunder er samlet som arbejdsgrundlag og SKAL verificeres
- * mod den gældende udgave af Banedanmarks sporregler (banenormer for sporgeometri)
- * før de bruges til projektering. Hver værdi har en `note`, så kilden kan
- * dokumenteres, og `verificeret` sættes til true, når den er kontrolleret.
+ * Hver værdi har en kildestatus:
+ *  - 'verificeret': kontrolleret direkte i det gældende regelsæt
+ *  - 'sekundaer':   gengivet fra Banedanmarks lærebog "Sporteknik" (2016), som citerer Sporregler
+ *  - 'antaget':     ingen dansk kilde fundet endnu – SKAL kontrolleres
  *
  * Alle grænser har to niveauer:
- *  - normal:     værdi der må anvendes uden videre
- *  - undtagelse: absolut grænse, som kun må anvendes efter særlig godkendelse
+ *  - normal:     normalbestemmelse
+ *  - undtagelse: undtagelsesbestemmelse (kræver dispensation/godkendelse)
  */
 
+export type Kildestatus = 'verificeret' | 'sekundaer' | 'antaget';
+
 export interface Limit {
+  label: string;
   normal: number;
   undtagelse: number;
   unit: string;
-  label: string;
   note: string;
-  verificeret: boolean;
+  /** Reference-id'er (se references.ts) og evt. afsnit/side */
+  kilde: string[];
+  status: Kildestatus;
+}
+
+export type Skinne = '60E2' | 'DSB45';
+
+export interface Settings {
+  skinne: Skinne;
+  saerligeTogsaet: boolean;
 }
 
 export interface RuleSet {
   id: string;
   navn: string;
-  /** Sporvidde [mm] */
   sporvidde: number;
-  /** Afstand mellem hjulenes kontaktpunkter (skinnehovedmidte) [mm] */
   kontaktafstand: number;
-  /** Tyngdeacceleration [m/s²] */
   g: number;
   overhoejdeMax: Limit;
   manglendeOverhoejdeMax: Limit;
+  manglendeOverhoejdeSporskifte: Limit;
   overskydendeOverhoejdeMax: Limit;
-  /** Største overhøjdeændring pr. tid [mm/s] */
   dhdtMax: Limit;
-  /** Største ændring af manglende overhøjde pr. tid [mm/s] */
   dIdtMax: Limit;
-  /** Stejleste overhøjderampe [mm/m] (2,5 mm/m = 1:400) */
   dhdsMax: Limit;
-  /** Rampehældning som funktion af hastighed: 1:(k·V) */
   rampeFaktor: Limit;
+  stigningMax: Limit;
+  stigningPerron: Limit;
+  lodretRadiusMin: Limit;
+  lodretRadiusMax: Limit;
+  lodretAccMax: Limit;
+  radiusRetSpor: number;
 }
 
 export const BANEDANMARK: RuleSet = {
   id: 'bdk',
-  navn: 'Banedanmark – sporregler',
+  navn: 'Banedanmark – Sporregler',
   sporvidde: 1435,
   kontaktafstand: 1500,
   g: 9.81,
   overhoejdeMax: {
     label: 'Overhøjde h',
-    normal: 150,
-    undtagelse: 160,
+    normal: 160,
+    undtagelse: 180,
     unit: 'mm',
-    note: 'Største overhøjde i kurve. Lavere grænse kan gælde ved perroner og i sporskifter.',
-    verificeret: false,
+    note: 'Sporregler afsn. 2.03. Lavere grænser kan gælde ved perroner, overkørsler og hvor tog skal holde stille.',
+    kilde: ['SR87 afsn. 2.03', 'ST16 s. 244'],
+    status: 'sekundaer',
   },
   manglendeOverhoejdeMax: {
-    label: 'Manglende overhøjde I',
+    label: 'Overhøjdeunderskud I',
     normal: 100,
     undtagelse: 130,
     unit: 'mm',
-    note: 'Konventionelle tog. Særlige værdier for krængetog er ikke medtaget.',
-    verificeret: false,
+    note:
+      'Undtagelse afhænger af skinne og hastighed: 60E2/DSB60 (A ≤ 22,5 t): 130 mm for V ≤ 140, 153 mm for 140 < V ≤ 250, særlige togsæt 160 mm. DSB45: 130 mm.',
+    kilde: ['SR87 afsn. 2.03', 'ST16 s. 244'],
+    status: 'sekundaer',
+  },
+  manglendeOverhoejdeSporskifte: {
+    label: 'I i krumme sporskifter (V > 100 km/t)',
+    normal: 80,
+    undtagelse: 80,
+    unit: 'mm',
+    note: 'Vigespor i I-krumme sporskifter og U-krumme sporskifter ved V > 100 km/t (tvangskinnepåvirkning).',
+    kilde: ['ST16 s. 246–247', 'BN1-14'],
+    status: 'sekundaer',
   },
   overskydendeOverhoejdeMax: {
-    label: 'Overskydende overhøjde E',
+    label: 'Overhøjdeoverskud E',
     normal: 70,
     undtagelse: 110,
     unit: 'mm',
-    note: 'Gælder for langsomtkørende tog (typisk godstog) ved laveste hastighed.',
-    verificeret: false,
+    note: 'Langsomt kørende tog (typisk gods). Værdi ikke fundet i dansk kilde – kontrollér mod Sporregler afsn. 2.03.',
+    kilde: ['EN13803'],
+    status: 'antaget',
   },
   dhdtMax: {
     label: 'Overhøjdeændring dh/dt',
     normal: 28,
     undtagelse: 46,
     unit: 'mm/s',
-    note: 'Svarer til rampe 1:(10·V) normalt og 1:(6·V) som undtagelse.',
-    verificeret: false,
+    note: 'Svarer til rampe 1:(10·V) og 1:(6·V). Kontrollér mod Sporregler afsn. 2.06.',
+    kilde: ['SR87 afsn. 2.06', 'EN13803'],
+    status: 'antaget',
   },
   dIdtMax: {
-    label: 'Ændring af manglende overhøjde dI/dt',
+    label: 'Ændring af overhøjdeunderskud dI/dt',
     normal: 55,
     undtagelse: 70,
     unit: 'mm/s',
-    note: 'Komfortkriterie i overgangskurven.',
-    verificeret: false,
+    note: 'Bestemmende for overgangskurvens længde. Kontrollér mod Sporregler afsn. 2.05.',
+    kilde: ['SR87 afsn. 2.05', 'EN13803'],
+    status: 'antaget',
   },
   dhdsMax: {
-    label: 'Rampehældning dh/ds',
+    label: 'Stejleste rampe dh/ds',
     normal: 2.5,
     undtagelse: 2.5,
     unit: 'mm/m',
-    note: 'Stejleste rampe 1:400 uanset hastighed (sporvridningshensyn).',
-    verificeret: false,
+    note: 'Svarer til 1:400 uanset hastighed. Kontrollér mod Sporregler afsn. 2.06.',
+    kilde: ['SR87 afsn. 2.06'],
+    status: 'antaget',
   },
   rampeFaktor: {
     label: 'Rampe 1:(k·V)',
     normal: 10,
     undtagelse: 6,
     unit: '',
-    note: 'Rampehældning afhængig af hastighed V [km/t].',
-    verificeret: false,
+    note: 'Rampehældning afhængig af hastighed V [km/t]. Kontrollér mod Sporregler afsn. 2.06.',
+    kilde: ['SR87 afsn. 2.06'],
+    status: 'antaget',
   },
+  stigningMax: {
+    label: 'Stigning/fald i hovedspor',
+    normal: 10,
+    undtagelse: 15.6,
+    unit: '‰',
+    note: 'Normalt maks. 10 ‰; maks. 15,6 ‰ (Storebælt, østtunnel).',
+    kilde: ['SR87 afsn. 2.10', 'ST16 s. 240'],
+    status: 'sekundaer',
+  },
+  stigningPerron: {
+    label: 'Stigning ved perron/opstillingsspor',
+    normal: 1.5,
+    undtagelse: 1.5,
+    unit: '‰',
+    note: 'Sporet bør ligge tilnærmelsesvis vandret.',
+    kilde: ['ST16 s. 240'],
+    status: 'sekundaer',
+  },
+  lodretRadiusMin: {
+    label: 'Mindste lodrette radius (hovedbaner)',
+    normal: 5000,
+    undtagelse: 5000,
+    unit: 'm',
+    note: 'Cirkelbuer i længdeprofilet på hovedbaner.',
+    kilde: ['SR87 afsn. 2.10', 'ST16 s. 240'],
+    status: 'sekundaer',
+  },
+  lodretRadiusMax: {
+    label: 'Største lodrette radius',
+    normal: 40000,
+    undtagelse: 40000,
+    unit: 'm',
+    note: 'Cirkelbuer i længdeprofilet på hovedbaner.',
+    kilde: ['ST16 s. 240'],
+    status: 'sekundaer',
+  },
+  lodretAccMax: {
+    label: 'Lodret acceleration a_v',
+    normal: 0.22,
+    undtagelse: 0.31,
+    unit: 'm/s²',
+    note: 'Komfortkriterie i lodrette kurver (svarer til R_v ≈ 0,35·V² hhv. 0,25·V²).',
+    kilde: ['EN13803'],
+    status: 'antaget',
+  },
+  radiusRetSpor: 25000,
 };
+
+/** Undtagelsesværdien for I afhænger af skinne, hastighed og togtype (Sporregler 2.03). */
+export function iUndtagelse(V: number, s: Settings): number {
+  if (s.skinne === 'DSB45') return 130;
+  if (s.saerligeTogsaet) return 160;
+  return V <= 140 ? 130 : 153;
+}
+
+/** Grænsen for I tilpasset hastighed og indstillinger. */
+export function limitI(rs: RuleSet, V: number, s: Settings): Limit {
+  return { ...rs.manglendeOverhoejdeMax, undtagelse: iUndtagelse(V, s) };
+}
 
 export type Status = 'ok' | 'undtagelse' | 'overskredet';
 
-/** Vurderer en (absolut) værdi mod en grænse. */
 export function vurder(value: number, limit: Limit): Status {
   const v = Math.abs(value);
   const eps = 1e-9;
@@ -117,8 +202,30 @@ export function vurder(value: number, limit: Limit): Status {
   return 'overskredet';
 }
 
+/** Vurdering hvor værdien skal være STØRRE end grænsen (fx radius). */
+export function vurderMin(value: number, limit: Limit): Status {
+  const eps = 1e-9;
+  if (value >= limit.normal - eps) return 'ok';
+  if (value >= limit.undtagelse - eps) return 'undtagelse';
+  return 'overskredet';
+}
+
 export function samletStatus(statuses: Status[]): Status {
   if (statuses.includes('overskredet')) return 'overskredet';
   if (statuses.includes('undtagelse')) return 'undtagelse';
   return 'ok';
+}
+
+/* ------------------------- globale indstillinger ------------------------- */
+
+const SKEY = 'sporkit:settings';
+export function loadSettings(): Settings {
+  try {
+    const raw = localStorage.getItem(SKEY);
+    if (raw) return { skinne: '60E2', saerligeTogsaet: false, ...JSON.parse(raw) };
+  } catch { /* */ }
+  return { skinne: '60E2', saerligeTogsaet: false };
+}
+export function saveSettings(s: Settings): void {
+  try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch { /* */ }
 }

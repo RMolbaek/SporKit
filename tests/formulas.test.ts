@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BANEDANMARK as rs, vurder } from '../src/core/rules';
+import { BANEDANMARK as rs, BANEDANMARK, vurder } from '../src/core/rules';
 import {
   cantConstant, equilibriumCant, cantDeficiency, cantExcess, minRadius, maxSpeed,
   transitionLengths, clothoid, cantWindow, roundTo, minRadiusMixed,
@@ -61,5 +61,49 @@ describe('vurdering', () => {
     expect(vurder(90, rs.manglendeOverhoejdeMax)).toBe('ok');
     expect(vurder(120, rs.manglendeOverhoejdeMax)).toBe('undtagelse');
     expect(vurder(140, rs.manglendeOverhoejdeMax)).toBe('overskredet');
+  });
+});
+
+import {
+  verticalCurve, minVerticalRadius, curveElements, versine, radiusFromVersine, overhang, rampTwist,
+  clothoidParamCompound,
+} from '../src/core/formulas';
+import { iUndtagelse } from '../src/core/rules';
+
+describe('avancerede formler', () => {
+  it('lodret kurve', () => {
+    const v = verticalCurve(5, -5, 10000, 160);
+    expect(v.T).toBeCloseTo(50, 6);
+    expect(v.f).toBeCloseTo(0.125, 6);
+    expect(v.konveks).toBe(true);
+    expect(minVerticalRadius(160, 0.22)).toBeCloseTo((160 / 3.6) ** 2 / 0.22, 6);
+  });
+  it('kurveelementer uden overgangskurve', () => {
+    const k = curveElements(1000, 100, 0); // 90°
+    expect(k.T).toBeCloseTo(1000, 6);
+    expect(k.Lc).toBeCloseTo(Math.PI * 500, 6);
+    expect(k.E).toBeCloseTo(1000 * (Math.SQRT2 - 1), 6);
+  });
+  it('kurveelementer med overgangskurve', () => {
+    const k = curveElements(1000, 20, 100);
+    expect(k.T).toBeGreaterThan(1000 * Math.tan((20 * Math.PI) / 400));
+    expect(k.Ltot).toBeCloseTo(1000 * ((20 * Math.PI) / 200) + 100, 0);
+  });
+  it('pilhøjde', () => {
+    expect(versine(1000, 20)).toBeCloseTo(50, 1);
+    expect(radiusFromVersine(versine(800, 20), 20)).toBeCloseTo(800, 6);
+  });
+  it('udbøjning og vridning', () => {
+    const o = overhang(250, 19, 26.4, 3.5, 150, BANEDANMARK);
+    expect(o.indvendig).toBeCloseTo(180.5, 1);
+    expect(o.haeldning).toBeCloseTo(350, 6);
+    expect(rampTwist(150, 100, 3).overBase).toBeCloseTo(4.5, 6);
+    expect(clothoidParamCompound(0, 1000, 100)).toBeCloseTo(Math.sqrt(100000), 6);
+  });
+  it('I undtagelse jf. Sporregler', () => {
+    expect(iUndtagelse(120, { skinne: '60E2', saerligeTogsaet: false })).toBe(130);
+    expect(iUndtagelse(160, { skinne: '60E2', saerligeTogsaet: false })).toBe(153);
+    expect(iUndtagelse(160, { skinne: '60E2', saerligeTogsaet: true })).toBe(160);
+    expect(iUndtagelse(160, { skinne: 'DSB45', saerligeTogsaet: false })).toBe(130);
   });
 });

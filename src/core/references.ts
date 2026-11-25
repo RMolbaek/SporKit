@@ -1,0 +1,142 @@
+/**
+ * Referenceliste. Hver grænseværdi i rules.ts peger på én eller flere af
+ * disse referencer via `id`.
+ */
+export interface Reference {
+  id: string;
+  kort: string;
+  titel: string;
+  udgiver: string;
+  type: 'Banenorm' | 'Regelsæt' | 'Lærebog' | 'Europæisk standard' | 'EU-forordning';
+  anvendelse: string;
+  url?: string;
+  /** Om SporKit-udvikleren har haft dokumentet i hænde */
+  gennemgaaet: boolean;
+}
+
+export const REFERENCES: Reference[] = [
+  {
+    id: 'SR87',
+    kort: 'Sporregler 1987',
+    titel: 'Sporregler (del 1: normal- og undtagelsesbestemmelser), afsnit 2.02–2.10 og tillæg 2E',
+    udgiver: 'DSB / Banedanmark',
+    type: 'Regelsæt',
+    anvendelse:
+      'Primær kilde for linjeføring: cirkelbuer (2.02), overhøjde (2.03), hastighed (2.04), overgangskurver (2.05), overhøjderamper (2.06), sammenstødende kurver (2.07–2.08) og længdeprofil (2.10).',
+    gennemgaaet: false,
+  },
+  {
+    id: 'ST16',
+    kort: 'Sporteknik, 2. udg.',
+    titel: 'Sporteknik – Danske jernbanespors opbygning, konstruktion og komponenter, 2. udgave, 2. oplag',
+    udgiver: 'Banedanmark, Teknik, LCC Spor (2016)',
+    type: 'Lærebog',
+    anvendelse:
+      'Gengiver Sporreglernes krav til overhøjde og overhøjdeunderskud (s. 243–245), krumme sporskifter (s. 246–247), længdeprofil (s. 240), samt svelle-, skinne- og tværprofildata (s. 30–42, 83–84, 93).',
+    url: 'https://www.bane.dk/-/media/Bane/Gamle/Presse/Temasider/Sporteknik_2udgave_2oplagx_compressed.pdf',
+    gennemgaaet: true,
+  },
+  {
+    id: 'BN1-38',
+    kort: 'BN1-38',
+    titel: 'Sporbeliggenhedskontrol og sporkvalitetsnormer',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Vridning og målebaser (1½/2, 2½/3, 6, 9, 12, 15 m), sporvidde, fejlklasser ved sporjustering.',
+    url: 'https://www.bane.dk/-/media/Bane/Dokumenter/Leverandoer/Teknisk-dokumentation/Tekniske-normer-og-regler/Banenormer/BN1_38_6-Sporbeliggenhedskontrol-og-sporkvalitetsnormer.pdf',
+    gennemgaaet: false,
+  },
+  {
+    id: 'BN1-6',
+    kort: 'BN1-6',
+    titel: 'Tværprofiler for ballasteret spor',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Ballastskulder, ballast- og underballasttykkelse, planum – anvendt i tegningen af tværprofilet.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'BN1-66',
+    kort: 'BN1-66',
+    titel: 'Langskinnespor. Spændingsudligning og indgreb i spændingsudlignet spor',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Mindste radius i langskinnespor (fx UIC60 Dmp: 400 m, UIC60 Dt: 700 m) og svelleafstand 625 mm.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'BN1-14',
+    kort: 'BN1-14',
+    titel: 'Projektering, tilstand og eftersyn af sporskifter og sporskæringer',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Sporskifter – overhøjdeunderskud i krumme sporskifter.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'BN1-154',
+    kort: 'BN1-154',
+    titel: 'Sporafstand og frispormærker',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Gældende krav til sporafstand. SporKits kurveudvidelse er kun et geometrisk overslag.',
+    url: 'https://www.bane.dk/da/Leverandoer/Krav/Tekniske-normer-og-regler/-/media/5A444D0AE6744AFFBA98BBFF7FB9F116.ashx',
+    gennemgaaet: false,
+  },
+  {
+    id: 'BN2-93',
+    kort: 'BN2-93',
+    titel: 'Absolut beliggenhed og fast afmærkning af sporets tracé',
+    udgiver: 'Banedanmark',
+    type: 'Banenorm',
+    anvendelse: 'Fast afmærkning af linjeføring og længdeprofil.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'EN13803',
+    kort: 'DS/EN 13803',
+    titel: 'Railway applications – Track – Track alignment design parameters – Track gauges 1435 mm and wider',
+    udgiver: 'CEN / Dansk Standard',
+    type: 'Europæisk standard',
+    anvendelse: 'Generelle sporgeometriske sammenhænge (h_eq, I, E, ramper, ændringshastigheder, lodrette kurver).',
+    gennemgaaet: false,
+  },
+  {
+    id: 'EN13848',
+    kort: 'DS/EN 13848',
+    titel: 'Railway applications – Track – Track geometry quality',
+    udgiver: 'CEN / Dansk Standard',
+    type: 'Europæisk standard',
+    anvendelse: 'Definition af sporvidde, vridning og overhøjde ved måling.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'EN13674',
+    kort: 'DS/EN 13674-1',
+    titel: 'Railway applications – Track – Rail – Vignole railway rails 46 kg/m and above',
+    udgiver: 'CEN / Dansk Standard',
+    type: 'Europæisk standard',
+    anvendelse: 'Skinneprofil 60E2 (mål i tværsnitstegningen).',
+    gennemgaaet: false,
+  },
+  {
+    id: 'EN13230',
+    kort: 'DS/EN 13230',
+    titel: 'Railway applications – Track – Concrete sleepers and bearers',
+    udgiver: 'CEN / Dansk Standard',
+    type: 'Europæisk standard',
+    anvendelse: 'Tekniske betingelser for betonsveller.',
+    gennemgaaet: false,
+  },
+  {
+    id: 'TSI-INF',
+    kort: 'TSI INF',
+    titel: 'Teknisk specifikation for interoperabilitet – Infrastruktur, Forordning (EU) nr. 1299/2014 med senere ændringer',
+    udgiver: 'Europa-Kommissionen',
+    type: 'EU-forordning',
+    anvendelse: 'Overhøjde og overhøjderamper (afsnit 4.2.5.3 jf. Sporteknik s. 250).',
+    gennemgaaet: false,
+  },
+];
+
+export const refById = (id: string): Reference | undefined => REFERENCES.find((r) => r.id === id);

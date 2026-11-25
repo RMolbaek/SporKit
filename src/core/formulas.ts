@@ -164,3 +164,129 @@ export function clothoid(R: number, L: number, dh: number): ClothoidGeometry {
   const rampe = dh > 0 ? (L * 1000) / Math.abs(dh) : Infinity;
   return { A, tau, p, X, Y, Xm, rampe };
 }
+
+/* ---------------- Overgangskurve mellem to buer (ensvendte) ---------------- */
+
+/** Klotoideparameter for overgangskurve mellem krumning 1/R1 og 1/R2 (0 = ligeud). */
+export function clothoidParamCompound(R1: number, R2: number, L: number): number {
+  const k1 = R1 > 0 ? 1 / R1 : 0;
+  const k2 = R2 > 0 ? 1 / R2 : 0;
+  const dk = Math.abs(k2 - k1);
+  return dk > 0 ? Math.sqrt(L / dk) : Infinity;
+}
+
+/** Vridning fra lineær rampe [mm/m] og over en målebase b [mm]. */
+export function rampTwist(dh: number, L: number, base: number): { mmPrM: number; overBase: number } {
+  const mmPrM = Math.abs(dh) / L;
+  return { mmPrM, overBase: mmPrM * base };
+}
+
+/* ---------------------------- Lodrette kurver ---------------------------- */
+
+export interface VerticalCurve {
+  /** Hældningsændring [‰] */
+  di: number;
+  /** Tangentlængde [m] */
+  T: number;
+  /** Kurvelængde (≈ 2T) [m] */
+  L: number;
+  /** Pilhøjde i toppunktet (afstand tangentskæring–kurve) [m] */
+  f: number;
+  /** Lodret acceleration [m/s²] */
+  av: number;
+  konveks: boolean;
+}
+
+/** i1, i2 i ‰ (positiv = stigning i kilometreringsretning) */
+export function verticalCurve(i1: number, i2: number, Rv: number, V: number): VerticalCurve {
+  const di = i2 - i1;
+  const T = (Rv * Math.abs(di)) / 2000;
+  return {
+    di,
+    T,
+    L: 2 * T,
+    f: (T * T) / (2 * Rv),
+    av: (V / 3.6) ** 2 / Rv,
+    konveks: di < 0,
+  };
+}
+
+/** Mindste lodrette radius ud fra tilladt lodret acceleration: Rv = v²/a_v */
+export function minVerticalRadius(V: number, av: number): number {
+  return (V / 3.6) ** 2 / av;
+}
+
+/** Højde (ordinat) under/over tangent i afstand x fra tangentpunkt: y = x²/(2Rv) */
+export function verticalOrdinate(x: number, Rv: number): number {
+  return (x * x) / (2 * Rv);
+}
+
+/* ---------------------- Vandrette kurveelementer ---------------------- */
+
+export interface CurveElements {
+  /** Vinkel [rad] */
+  alpha: number;
+  /** Tangentlængde fra tangentskæringspunkt (TS) til overgangskurvens start [m] */
+  T: number;
+  /** Cirkelbuens længde [m] */
+  Lc: number;
+  /** Samlet længde (OK + bue + OK) [m] */
+  Ltot: number;
+  /** Afstand fra TS til kurvens midtpunkt [m] */
+  E: number;
+  p: number;
+  Xm: number;
+  tau: number;
+  /** true hvis overgangskurverne er for lange til vinklen */
+  umulig: boolean;
+}
+
+/** Symmetrisk kurve med overgangskurver af længde L (L=0 → ren cirkelbue). alpha i gon. */
+export function curveElements(R: number, alphaGon: number, L: number): CurveElements {
+  const alpha = (alphaGon * Math.PI) / 200;
+  let p = 0, Xm = 0, tau = 0;
+  if (L > 0) {
+    const g = clothoid(R, L, 0);
+    p = g.p; Xm = g.Xm; tau = g.tau;
+  }
+  const T = (R + p) * Math.tan(alpha / 2) + Xm;
+  const Lc = R * (alpha - 2 * tau);
+  const E = (R + p) / Math.cos(alpha / 2) - R;
+  return { alpha, T, Lc, Ltot: Lc + 2 * L, E, p, Xm, tau, umulig: Lc < 0 };
+}
+
+/* ------------------------------ Pilhøjde ------------------------------ */
+
+/** Eksakt pilhøjde [mm] for korde c [m] på radius R [m] */
+export function versine(R: number, c: number): number {
+  return (R - Math.sqrt(R * R - (c * c) / 4)) * 1000;
+}
+
+/** Radius [m] ud fra målt pilhøjde f [mm] og korde c [m] (eksakt) */
+export function radiusFromVersine(f: number, c: number): number {
+  const fm = f / 1000;
+  return (c * c) / (8 * fm) + fm / 2;
+}
+
+/* --------------------------- Kurveudvidelse --------------------------- */
+
+export interface Overhang {
+  /** Udbøjning ind mod kurvecentrum på midten af vognen [mm] */
+  indvendig: number;
+  /** Udbøjning udad ved vognenden [mm] */
+  udvendig: number;
+  /** Sidevandring pga. overhøjde i højden H over SO [mm] (mod kurvens inderside) */
+  haeldning: number;
+}
+
+/**
+ * Geometrisk overslag for køretøjs udbøjning i kurve.
+ * a = bogiecenterafstand [m], Lv = vognkasselængde [m], H = højde over SO [m], h = overhøjde [mm].
+ */
+export function overhang(R: number, a: number, Lv: number, H: number, h: number, rs: RuleSet): Overhang {
+  return {
+    indvendig: ((a * a) / (8 * R)) * 1000,
+    udvendig: ((Lv * Lv - a * a) / (8 * R)) * 1000,
+    haeldning: (h * H * 1000) / rs.kontaktafstand,
+  };
+}

@@ -22,17 +22,36 @@
       <span class="tag">Banedanmark · Sporregler</span>
       <button id="theme" class="icon-btn" aria-label="Skift lyst/mørkt tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
     </header>
-    <nav id="nav" class="nav" aria-label="Moduler"></nav>
-    <div class="page">
-      <div class="page-head">
-        <h1 id="mod-titel"></h1>
-        <p id="mod-besk"></p>
+    <div class="layout">
+      <nav id="nav" class="nav" aria-label="Moduler"></nav>
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <h1 id="mod-titel"></h1>
+            <p id="mod-besk"></p>
+          </div>
+          <button id="pdf" class="btn-primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6"/><path d="m9 15 3 3 3-3"/></svg>
+            Eksportér PDF
+          </button>
+        </div>
+        <main id="main"></main>
+        <footer class="foot">
+          SporKit er et hjælpeværktøj. Kontrollér altid resultater mod gældende banenormer.
+        </footer>
       </div>
-      <main id="main"></main>
-      <footer class="foot">
-        SporKit er et hjælpeværktøj. Kontrollér altid resultater mod gældende banenormer.
-      </footer>
     </div>
+    <dialog id="pdf-dlg" class="dlg">
+      <form id="pdf-form">
+        <h2>Beregningsrapport</h2>
+        <p>Rapporten indeholder input, beregningsgang med indsatte tal, kontrol mod grænseværdier og referencer. Vælg <b>Gem som PDF</b> i printdialogen.</p>
+        <label>Projekt / strækning<input id="p-navn" autocomplete="off" placeholder="fx Fredericia–Aarhus, spor 1"/></label>
+        <label>Km / lokation<input id="p-sted" autocomplete="off" placeholder="fx km 12,350–12,900"/></label>
+        <label>Udført af<input id="p-udf" autocomplete="off" placeholder="Navn / initialer"/></label>
+        <div class="dlg-btns"><button type="button" id="pdf-cancel" class="btn-ghost">Annullér</button><button type="submit" class="btn-primary">Lav PDF</button></div>
+      </form>
+    </dialog>
+    <div id="print-root"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

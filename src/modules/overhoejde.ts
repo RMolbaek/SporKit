@@ -1,71 +1,45 @@
-import { BANEDANMARK as rs, vurder, samletStatus } from '../core/rules';
+import { BANEDANMARK as rs, vurder, samletStatus, limitI, loadSettings } from '../core/rules';
 import {
-  cantConstant, equilibriumCant, cantDeficiency, cantExcess, lateralAcceleration,
-  cantWindow, roundTo,
+  cantConstant, equilibriumCant, cantDeficiency, cantExcess, lateralAcceleration, cantWindow, roundTo,
 } from '../core/formulas';
-import { card, fmt, form, h, limitText, loadState, results, saveState, chip, type Module } from '../ui/dom';
+import { setReport } from '../core/report';
+import { trackCrossSection } from '../ui/track';
+import { card, fmt, form, h, limitText, loadState, results, saveState, chip, graense, kildeTekst, select, type Module } from '../ui/dom';
 
 type S = { R: number; V: number; Vmin: number; h: number };
 const DEF: S = { R: 1200, V: 160, Vmin: 80, h: 110 };
-
-/** Tværsnit af sporet med overhøjde (overdrevet hældning). */
-function crossSection(hmm: number, I: number): string {
-  const ang = Math.atan(hmm / 1500) * 2.2; // overdrevet ×2,2
-  const deg = (-ang * 180) / Math.PI;
-  const arrowDir = I >= 0 ? 1 : -1;
-  const arrowLen = Math.min(70, Math.abs(I) * 0.45);
-  return `
-  <svg viewBox="0 0 320 170" class="viz" role="img" aria-label="Sportværsnit med overhøjde">
-    <defs>
-      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-        <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
-      </marker>
-    </defs>
-    <polygon points="30,160 290,160 255,118 65,118" class="ballast"/>
-    <g transform="rotate(${deg.toFixed(2)} 160 112)">
-      <rect x="55" y="106" width="210" height="12" rx="2" class="sleeper"/>
-      <rect x="88" y="90" width="14" height="16" rx="1.5" class="rail"/>
-      <rect x="218" y="90" width="14" height="16" rx="1.5" class="rail"/>
-      <line x1="95" y1="86" x2="225" y2="86" class="dim"/>
-    </g>
-    <line x1="40" y1="${(112 - Math.tan(ang) * -65).toFixed(1)}" x2="300" y2="${(112 - Math.tan(ang) * -65).toFixed(1)}" class="ref"/>
-    <text x="300" y="${(112 - Math.tan(ang) * 65 - 30).toFixed(1)}" text-anchor="end" class="lbl-svg">h = ${fmt(hmm)} mm</text>
-    <text x="30" y="20" class="lbl-svg muted">Kurveindre</text>
-    <text x="290" y="20" text-anchor="end" class="lbl-svg muted">Kurveydre</text>
-    ${
-      arrowLen > 3
-        ? `<line x1="160" y1="45" x2="${160 + arrowDir * arrowLen}" y2="45" class="force" marker-end="url(#ah)"/>
-           <text x="160" y="35" text-anchor="middle" class="lbl-svg">${I >= 0 ? 'Resulterende udad' : 'Resulterende indad'}</text>`
-        : `<text x="160" y="40" text-anchor="middle" class="lbl-svg">I ligevægt</text>`
-    }
-    <circle cx="160" cy="45" r="3.5" class="dot"/>
-  </svg>`;
-}
+type Opt = { sporskifte: string; svelle: string };
 
 export const overhoejde: Module = {
   id: 'overhoejde',
+  gruppe: 'Linjeføring',
   titel: 'Overhøjde',
   kort: 'Overhøjde',
   ikon: '◢',
-  beskrivelse: 'Ligevægtsoverhøjde, manglende og overskydende overhøjde samt tilladt overhøjdeinterval.',
+  beskrivelse: 'Afbalanceret overhøjde, overhøjdeunderskud og -overskud samt tilladt overhøjdeinterval (Sporregler afsn. 2.03).',
   render(root) {
     const st = loadState<S>('overhoejde', DEF);
+    const opt = loadState<Opt>('overhoejde-opt', { sporskifte: 'nej', svelle: 'S99' });
     const out = h('div', { class: 'out' });
 
     const update = () => {
       saveState('overhoejde', st);
+      saveState('overhoejde-opt', opt);
+      const set = loadSettings();
+      const C = cantConstant(rs);
+      const LI = opt.sporskifte === 'ja' && st.V > 100 ? rs.manglendeOverhoejdeSporskifte : limitI(rs, st.V, set);
       const heq = equilibriumCant(st.V, st.R, rs);
       const heqMin = equilibriumCant(st.Vmin, st.R, rs);
       const I = cantDeficiency(st.V, st.R, st.h, rs);
       const E = cantExcess(st.Vmin, st.R, st.h, rs);
       const aq = lateralAcceleration(I, rs);
       const sH = vurder(st.h, rs.overhoejdeMax);
-      const sI = I > 0 ? vurder(I, rs.manglendeOverhoejdeMax) : 'ok';
+      const sI = I > 0 ? vurder(I, LI) : 'ok';
       const sE = E > 0 ? vurder(E, rs.overskydendeOverhoejdeMax) : 'ok';
       const total = samletStatus([sH, sI, sE]);
 
-      const wN = cantWindow(st.V, st.Vmin, st.R, rs.manglendeOverhoejdeMax.normal, rs.overskydendeOverhoejdeMax.normal, rs.overhoejdeMax.normal, rs);
-      const wU = cantWindow(st.V, st.Vmin, st.R, rs.manglendeOverhoejdeMax.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs.overhoejdeMax.undtagelse, rs);
+      const wN = cantWindow(st.V, st.Vmin, st.R, LI.normal, rs.overskydendeOverhoejdeMax.normal, rs.overhoejdeMax.normal, rs);
+      const wU = cantWindow(st.V, st.Vmin, st.R, LI.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs.overhoejdeMax.undtagelse, rs);
       let forslag = NaN;
       if (wN.muligt) {
         const lav = roundTo(wN.lav, 5, 'op');
@@ -78,24 +52,23 @@ export const overhoejde: Module = {
       const pct = (x: number) => `${Math.max(0, Math.min(100, (x / scaleMax) * 100)).toFixed(1)}%`;
       const bar = (w: { lav: number; hoej: number; muligt: boolean }, cls: string) =>
         w.muligt ? `<div class="win ${cls}" style="left:${pct(w.lav)};width:calc(${pct(w.hoej)} - ${pct(w.lav)})"></div>` : '';
+      const fig = trackCrossSection({ svelle: opt.svelle as 'S99' | 'S16', h: st.h, V: st.V });
 
       out.innerHTML = `
         <div class="summary summary-${total}">
-          <div><strong>Samlet vurdering</strong><span>${st.R} m · ${st.V} km/t · h = ${st.h} mm</span></div>
+          <div><strong>Samlet vurdering</strong><span>R ${fmt(st.R)} m · V ${st.V} km/t · h ${st.h} mm</span></div>
           ${chip(total)}
         </div>
         ${results([
-          { symbol: 'h<sub>eq</sub>', label: 'Ligevægtsoverhøjde (V)', value: fmt(heq), unit: 'mm', big: true,
-            sub: `h<sub>eq</sub> = ${fmt(cantConstant(rs), 2)}·V²/R` },
-          { symbol: 'I', label: 'Manglende overhøjde', value: fmt(I), unit: 'mm', status: sI, big: true,
-            sub: limitText(rs.manglendeOverhoejdeMax) },
-          { symbol: 'E', label: 'Overskydende overhøjde (V<sub>min</sub>)', value: fmt(E), unit: 'mm', status: sE,
+          { symbol: 'h<sub>a</sub>', label: 'Afbalanceret overhøjde (V)', value: fmt(heq), unit: 'mm', big: true,
+            sub: `h<sub>a</sub> = ${fmt(C, 2)}·V²/R` },
+          { symbol: 'I', label: 'Overhøjdeunderskud', value: fmt(I), unit: 'mm', status: sI, big: true, sub: limitText(LI) },
+          { symbol: 'E', label: 'Overhøjdeoverskud (V<sub>min</sub>)', value: fmt(E), unit: 'mm', status: sE,
             sub: limitText(rs.overskydendeOverhoejdeMax) },
-          { symbol: 'h', label: 'Valgt overhøjde', value: fmt(st.h), unit: 'mm', status: sH,
-            sub: limitText(rs.overhoejdeMax) },
+          { symbol: 'h', label: 'Valgt overhøjde', value: fmt(st.h), unit: 'mm', status: sH, sub: limitText(rs.overhoejdeMax) },
           { symbol: 'a<sub>q</sub>', label: 'Ukompenseret sideacceleration', value: fmt(aq, 2), unit: 'm/s²',
-            sub: 'a<sub>q</sub> = g·I / 1500' },
-          { symbol: 'h<sub>eq,min</sub>', label: 'Ligevægt for V<sub>min</sub>', value: fmt(heqMin), unit: 'mm' },
+            sub: '1,0 m/s² svarer til 153 mm' },
+          { symbol: 'h<sub>a,min</sub>', label: 'Afbalanceret for V<sub>min</sub>', value: fmt(heqMin), unit: 'mm' },
         ])}
         <div class="window">
           <div class="window-head">
@@ -105,23 +78,55 @@ export const overhoejde: Module = {
           </div>
           <div class="track">
             ${bar(wU, 'win-u')}${bar(wN, 'win-n')}
-            <div class="mark mark-h" style="left:${pct(st.h)}" title="Valgt h"><span>h</span></div>
-            <div class="mark mark-eq" style="left:${pct(heq)}" title="h_eq"><span>h<sub>eq</sub></span></div>
+            <div class="mark mark-h" style="left:${pct(st.h)}"><span>h</span></div>
+            <div class="mark mark-eq" style="left:${pct(heq)}"><span>h<sub>a</sub></span></div>
           </div>
           <div class="scale"><span>0</span><span>${fmt(scaleMax / 2)}</span><span>${fmt(scaleMax)} mm</span></div>
-          ${
-            Number.isFinite(forslag)
-              ? `<p class="tip">Forslag: <strong>h = ${fmt(forslag)} mm</strong> – midt i normalintervallet, afrundet til 5 mm.
-                 <button class="btn-link" data-apply="${forslag}">Brug forslag</button></p>`
-              : `<p class="tip bad">Radius er for lille til både V = ${st.V} og V<sub>min</sub> = ${st.Vmin} km/t inden for normalgrænserne. Øg R, sænk V eller hæv V<sub>min</sub>.</p>`
-          }
+          ${Number.isFinite(forslag)
+            ? `<p class="tip">Forslag: <strong>h = ${fmt(forslag)} mm</strong> – midt i normalintervallet, afrundet til 5 mm.
+               <button class="btn-link" data-apply="${forslag}">Brug forslag</button></p>`
+            : `<p class="tip bad">Radius er for lille til både V = ${st.V} og V<sub>min</sub> = ${st.Vmin} km/t inden for normalbestemmelserne. Øg R, sænk V eller hæv V<sub>min</sub>.</p>`}
         </div>
-        ${crossSection(st.h, I)}
+        <h3>Tværprofil i kurven (ægte skala)</h3>
+        ${fig}
       `;
       out.querySelector<HTMLButtonElement>('[data-apply]')?.addEventListener('click', (e) => {
         st.h = Number((e.currentTarget as HTMLElement).dataset.apply);
         root.innerHTML = '';
         overhoejde.render(root);
+      });
+
+      setReport({
+        modul: 'Overhøjde',
+        inputs: [
+          { label: 'Kurveradius', symbol: 'R', value: fmt(st.R), unit: 'm' },
+          { label: 'Strækningshastighed', symbol: 'V', value: fmt(st.V), unit: 'km/t' },
+          { label: 'Laveste hastighed', symbol: 'V<sub>min</sub>', value: fmt(st.Vmin), unit: 'km/t' },
+          { label: 'Overhøjde', symbol: 'h', value: fmt(st.h), unit: 'mm' },
+          { label: 'Krumt sporskifte', symbol: '', value: opt.sporskifte === 'ja' ? 'Ja' : 'Nej', unit: '' },
+          { label: 'Skinneprofil', symbol: '', value: set.skinne, unit: '' },
+        ],
+        steps: [
+          { label: 'Konstant', formel: 'C = e / (g·3,6²)', indsat: `C = ${rs.kontaktafstand} / (${rs.g}·3,6²)`, resultat: fmt(C, 3) },
+          { label: 'Afbalanceret overhøjde', formel: 'h<sub>a</sub> = C·V²/R', indsat: `${fmt(C, 3)}·${st.V}²/${fmt(st.R)}`, resultat: `${fmt(heq, 1)} mm` },
+          { label: 'Overhøjdeunderskud', formel: 'I = h<sub>a</sub> − h', indsat: `${fmt(heq, 1)} − ${st.h}`, resultat: `${fmt(I, 1)} mm` },
+          { label: 'Afbalanceret ved V<sub>min</sub>', formel: 'h<sub>a,min</sub> = C·V<sub>min</sub>²/R', indsat: `${fmt(C, 3)}·${st.Vmin}²/${fmt(st.R)}`, resultat: `${fmt(heqMin, 1)} mm` },
+          { label: 'Overhøjdeoverskud', formel: 'E = h − h<sub>a,min</sub>', indsat: `${st.h} − ${fmt(heqMin, 1)}`, resultat: `${fmt(E, 1)} mm` },
+          { label: 'Sideacceleration', formel: 'a<sub>q</sub> = g·I/e', indsat: `${rs.g}·${fmt(I, 1)}/${rs.kontaktafstand}`, resultat: `${fmt(aq, 3)} m/s²` },
+          { label: 'Nedre grænse for h', formel: 'h ≥ h<sub>a</sub> − I<sub>max</sub>', indsat: `${fmt(heq, 1)} − ${LI.normal}`, resultat: `${fmt(Math.max(0, heq - LI.normal), 1)} mm` },
+          { label: 'Øvre grænse for h', formel: 'h ≤ min(h<sub>max</sub>; h<sub>a,min</sub> + E<sub>max</sub>)', indsat: `min(${rs.overhoejdeMax.normal}; ${fmt(heqMin, 1)} + ${rs.overskydendeOverhoejdeMax.normal})`, resultat: `${fmt(wN.hoej, 1)} mm` },
+        ],
+        checks: [
+          { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: graense(rs.overhoejdeMax), status: sH, kilde: kildeTekst(rs.overhoejdeMax) },
+          { label: 'Overhøjdeunderskud I', value: `${fmt(I, 1)} mm`, graense: graense(LI), status: sI, kilde: kildeTekst(LI) },
+          { label: 'Overhøjdeoverskud E', value: `${fmt(E, 1)} mm`, graense: graense(rs.overskydendeOverhoejdeMax), status: sE, kilde: kildeTekst(rs.overskydendeOverhoejdeMax) },
+        ],
+        noter: [
+          wN.muligt ? `Tilladt interval (normal): ${fmt(wN.lav)}–${fmt(wN.hoej)} mm. Forslag: h = ${fmt(forslag)} mm.` : 'Der findes intet tilladt overhøjdeinterval efter normalbestemmelserne.',
+          'Lavere overhøjde kan være krævet ved perroner, overkørsler og hvor tog skal holde stille (Sporregler afsn. 2.03).',
+        ],
+        refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6'],
+        figur: fig,
       });
     };
 
@@ -130,11 +135,15 @@ export const overhoejde: Module = {
         { key: 'R', label: 'Kurveradius', symbol: 'R', unit: 'm', min: 150, max: 10000, step: 10 },
         { key: 'V', label: 'Strækningshastighed', symbol: 'V', unit: 'km/t', min: 10, max: 300, step: 5 },
         { key: 'Vmin', label: 'Laveste hastighed (gods)', symbol: 'V<sub>min</sub>', unit: 'km/t', min: 0, max: 200, step: 5,
-          hint: 'Bruges til overskydende overhøjde E.' },
+          hint: 'Bruges til overhøjdeoverskud E.' },
         { key: 'h', label: 'Overhøjde', symbol: 'h', unit: 'mm', min: 0, max: 180, step: 5 },
       ],
       st,
       update,
+    );
+    f.append(
+      select('Krumt sporskifte (vigespor / U-krumt)', 'sporskifte', [['nej', 'Nej – almindeligt spor'], ['ja', 'Ja – I ≤ 80 mm ved V > 100']], opt, update),
+      select('Svelle i tegning', 'svelle', [['S99', 'S99 (Dmp)'], ['S16', 'S16 (Dme)']], opt, update),
     );
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));
     update();

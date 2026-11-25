@@ -1,0 +1,82 @@
+import { versine, radiusFromVersine, equilibriumCant, maxSpeed } from '../core/formulas';
+import { BANEDANMARK as rs } from '../core/rules';
+import { setReport } from '../core/report';
+import { card, fmt, form, h, loadState, results, saveState, type Module } from '../ui/dom';
+
+type S = { R: number; c: number; f: number; h1: number; h2: number; b: number; hm: number; I: number };
+const DEF: S = { R: 800, c: 20, f: 62, h1: 55, h2: 40, b: 3, hm: 110, I: 100 };
+
+export const sporkontrol: Module = {
+  id: 'sporkontrol',
+  gruppe: 'I sporet',
+  titel: 'Pilhøjde og vridning',
+  kort: 'I sporet',
+  ikon: '⊢',
+  beskrivelse: 'Hurtige beregninger i sporet: pilhøjde ↔ radius, vridning over målebase og hastighed ud fra målt overhøjde.',
+  render(root) {
+    const st = loadState<S>('sporkontrol', DEF);
+    const out = h('div', { class: 'out' });
+    const update = () => {
+      saveState('sporkontrol', st);
+      const f = versine(st.R, st.c);
+      const fApprox = (st.c * st.c) / (8 * st.R) * 1000;
+      const Rm = radiusFromVersine(st.f, st.c);
+      const tw = Math.abs(st.h1 - st.h2) / st.b;
+      const twSum = Math.abs(st.h1 - st.h2);
+      const Rref = Rm;
+      const Vm = maxSpeed(Rref, st.hm, st.I, rs);
+      const ha = equilibriumCant(Vm, Rref, rs);
+      const bases = [10, 20].map((c) => ({ c, f: versine(st.R, c) }));
+      out.innerHTML = `
+        <h3>Pilhøjde for radius</h3>
+        ${results([
+          { symbol: 'f', label: `Pilhøjde, korde ${fmt(st.c)} m`, value: fmt(f, 1), unit: 'mm', big: true, sub: `f ≈ c²/(8R) = ${fmt(fApprox, 1)} mm` },
+          ...bases.map((b) => ({ symbol: `f<sub>${b.c}</sub>`, label: `Korde ${b.c} m`, value: fmt(b.f, 1), unit: 'mm' })),
+        ])}
+        <h3>Radius fra målt pilhøjde</h3>
+        ${results([
+          { symbol: 'R', label: `Målt f = ${fmt(st.f)} mm på ${fmt(st.c)} m korde`, value: fmt(Rm, 0), unit: 'm', big: true, sub: 'R = c²/(8f) + f/2' },
+          { symbol: 'V<sub>max</sub>', label: `Hastighed med h = ${st.hm} mm, I = ${st.I} mm`, value: fmt(Math.floor(Vm / 5) * 5), unit: 'km/t', sub: `beregnet ${fmt(Vm, 1)} km/t · h<sub>a</sub> = ${fmt(ha)} mm` },
+        ])}
+        <h3>Vridning</h3>
+        ${results([
+          { symbol: 'v', label: `Vridning over ${fmt(st.b, 1)} m`, value: fmt(tw, 2), unit: 'mm/m', big: true, sub: `|h₁ − h₂| / b = ${fmt(twSum)} mm / ${fmt(st.b, 1)} m` },
+        ])}
+        <p class="tip">Målebaser iht. BN1-38: 1½ eller 2, 2½ eller 3, 6, 9, 12 og 15 m. Grænseværdier for vridning afhænger af fejlklasse og findes i BN1-38. Eksempel fra Sporteknik: h₁ = 55, h₂ = 40, b = 3 m → 5 mm/m.</p>
+      `;
+      setReport({
+        modul: 'Pilhøjde og vridning',
+        inputs: [
+          { label: 'Radius', symbol: 'R', value: fmt(st.R), unit: 'm' },
+          { label: 'Kordelængde', symbol: 'c', value: fmt(st.c), unit: 'm' },
+          { label: 'Målt pilhøjde', symbol: 'f', value: fmt(st.f), unit: 'mm' },
+          { label: 'Målt overhøjde punkt 1 / 2', symbol: 'h₁ / h₂', value: `${fmt(st.h1)} / ${fmt(st.h2)}`, unit: 'mm' },
+          { label: 'Målebase', symbol: 'b', value: fmt(st.b, 1), unit: 'm' },
+          { label: 'Overhøjde / tilladt I', symbol: 'h / I', value: `${st.hm} / ${st.I}`, unit: 'mm' },
+        ],
+        steps: [
+          { label: 'Pilhøjde (eksakt)', formel: 'f = R − √(R² − c²/4)', indsat: `${fmt(st.R)} − √(${fmt(st.R)}² − ${fmt(st.c)}²/4)`, resultat: `${fmt(f, 2)} mm` },
+          { label: 'Pilhøjde (tilnærmet)', formel: 'f ≈ c²/(8R)', indsat: `${fmt(st.c)}²/(8·${fmt(st.R)})`, resultat: `${fmt(fApprox, 2)} mm` },
+          { label: 'Radius fra pilhøjde', formel: 'R = c²/(8f) + f/2', indsat: `${fmt(st.c)}²/(8·${fmt(st.f / 1000, 3)}) + ${fmt(st.f / 1000, 3)}/2`, resultat: `${fmt(Rm, 1)} m` },
+          { label: 'Hastighed', formel: 'V = √(R·(h + I)/C)', indsat: `√(${fmt(Rm, 1)}·(${st.hm} + ${st.I})/11,80)`, resultat: `${fmt(Vm, 1)} km/t` },
+          { label: 'Vridning', formel: 'v = |h₁ − h₂|/b', indsat: `|${st.h1} − ${st.h2}|/${fmt(st.b, 1)}`, resultat: `${fmt(tw, 2)} mm/m` },
+        ],
+        checks: [],
+        noter: ['Grænseværdier for vridning og overhøjdens ujævnhed fremgår af BN1-38 (fejlklasser).'],
+        refs: ['BN1-38', 'ST16', 'EN13848', 'SR87'],
+      });
+    };
+    const f = form<keyof S>([
+      { key: 'R', label: 'Radius', symbol: 'R', unit: 'm', min: 100, max: 10000, step: 10 },
+      { key: 'c', label: 'Kordelængde', symbol: 'c', unit: 'm', min: 2, max: 40, step: 1 },
+      { key: 'f', label: 'Målt pilhøjde', symbol: 'f', unit: 'mm', min: 1, max: 500, step: 1 },
+      { key: 'hm', label: 'Overhøjde (til hastighed)', symbol: 'h', unit: 'mm', min: 0, max: 180, step: 5 },
+      { key: 'I', label: 'Tilladt overhøjdeunderskud', symbol: 'I', unit: 'mm', min: 0, max: 160, step: 5 },
+      { key: 'h1', label: 'Målt overhøjde, punkt 1', symbol: 'h₁', unit: 'mm', min: -50, max: 200, step: 1 },
+      { key: 'h2', label: 'Målt overhøjde, punkt 2', symbol: 'h₂', unit: 'mm', min: -50, max: 200, step: 1 },
+      { key: 'b', label: 'Målebase', symbol: 'b', unit: 'm', min: 1, max: 20, step: 0.5 },
+    ], st, update);
+    root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));
+    update();
+  },
+};
