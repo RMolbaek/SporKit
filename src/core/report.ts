@@ -19,6 +19,8 @@ export interface Report {
   refs: string[];
   /** SVG-figur til rapporten */
   figur?: string;
+  /** Ekstra sider (fx én pr. konflikt) – hver starter på en ny side */
+  sider?: string[];
 }
 
 let current: Report | null = null;

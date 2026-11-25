@@ -463,3 +463,34 @@ describe('BN1-166-1 profiler', () => {
     expect(v).toBeCloseTo(0, 0);
   });
 });
+
+import { parsePunkter, iSporplan, afstandTilKant, vurder as vurderPunkt, EKSEMPEL } from '../src/core/fritrumskontrol';
+
+describe('Fritrumskontrol af opmålingspunkter', () => {
+  it('indlæsning (tab/semikolon, decimalkomma, enhed m)', () => {
+    const r = parsePunkter(EKSEMPEL);
+    expect(r.punkter.length).toBe(6);
+    expect(r.fejl).toEqual([]);
+    const s = parsePunkter('A;1,2;0;2,5;1,1;test;0;0', 'm');
+    expect(s.punkter[0].x).toBe(2500);
+    expect(s.punkter[0].z).toBeCloseTo(1100, 6);
+    expect(parsePunkter('A;1;x;2;3').fejl.length).toBe(0); // første linje = overskrift
+    expect(parsePunkter('h\nA;1;x;2;3').fejl.length).toBe(1);
+  });
+  it('sporplan drejer om spormidte', () => {
+    expect(iSporplan(1000, 0, 0)).toEqual([1000, 0]);
+    const [u, v] = iSporplan(750, 0, 150); // højre skinne løftet
+    expect(v).toBeLessThan(0);
+    expect(u).toBeLessThan(750);
+  });
+  it('vurdering og margin', () => {
+    const fri = vurderPunkt({ id: 'a', km: '', h: 0, x: 3150, z: 1200, beskrivelse: '', R: 0, Rv: 0, linje: 1 }, 'D', { vandret: 50, lodret: 100 });
+    expect(fri.konflikt).toBe(false);
+    expect(fri.margin).toBeCloseTo(3150 - 2050, 0);
+    const k = vurderPunkt({ id: 'b', km: '', h: 0, x: 2030, z: 1200, beskrivelse: '', R: 0, Rv: 0, linje: 1 }, 'D', { vandret: 50, lodret: 100 });
+    expect(k.konflikt).toBe(true);
+    expect(k.konfliktProfil).toBe(false);
+    expect(k.margin).toBeCloseTo(-20, 0);
+    expect(afstandTilKant([0, 0], [[-1, -1], [1, -1], [1, 1], [-1, 1]])).toBeCloseTo(1, 6);
+  });
+});

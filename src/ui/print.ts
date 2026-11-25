@@ -72,6 +72,8 @@ export function buildReportHtml(r: Report, projekt: { navn: string; sted: string
       erstatter ikke projektering efter gældende banenormer.
     </div>
 
+    ${(r.sider ?? []).map((side) => `<section class="rpt-page">${uniqueIds(side)}</section>`).join('')}
+
     <table class="rpt-sign">
       <tr><th>Udført af</th><th>Kontrolleret af</th><th>Godkendt af</th></tr>
       <tr><td>${esc(projekt.udfoert) || '&nbsp;'}<br/><small>Dato: ${dato}</small></td><td><br/><small>Dato:</small></td><td><br/><small>Dato:</small></td></tr>
