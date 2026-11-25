@@ -5,6 +5,7 @@ import { BANEDANMARK as rs, vurder, limitI, loadSettings, samletStatus, type Sta
 import { equilibriumCant, transitionLengths } from '../core/formulas';
 import { TSI_RV_MIN, TSI_KILDE } from '../core/tsi';
 import { setReport } from '../core/report';
+import { kvalitetsklasse, vridGraense, rampeVridning, lavVridMax } from '../core/bn138';
 import { card, chip, fmt, h, loadState, saveState, select, type Module } from '../ui/dom';
 
 interface State {
@@ -150,6 +151,14 @@ export const tracetavler: Module = {
         const rN = Math.max(...rampKrav.map((k) => k.normal)), rU = Math.max(...rampKrav.map((k) => k.undtagelse));
         const sam = t.rpl <= 0 || (Math.abs(t.rpl - t.okl) < 0.05 && Math.abs(t.rstart) < 0.05);
         const st3 = (L: number, n: number, u: number): Status => (L >= n - 1e-6 ? 'ok' : L >= u - 1e-6 ? 'undtagelse' : 'overskredet');
+        {
+          const Lr = sam ? t.okl : t.rpl;
+          const kk = kvalitetsklasse(V);
+          const g = vridGraense(kk, 3);
+          const v = rampeVridning(dh, Lr, 3);
+          const lav = lavVridMax(Math.min(a.R ?? Infinity, b.R ?? Infinity), Math.max(hOf(a), hOf(b)));
+          if (Math.abs(dh) > 0) checks.push({ label: `Overgang ${i + 1}: vridning fra rampe (3 m)`, value: `${fmt(v, 2)} mm/m`, graense: `+ ${fmt(g.fk1 ?? 0, 1)} ≤ ${fmt(g.fk3 ?? g.fk4, 1)} (fk 3) · Max ${fmt(lav ? g.max[0] : g.max[1], 1)}`, status: v + (g.fk1 ?? 0) <= (g.fk3 ?? g.fk4) ? 'ok' : v <= g.fk4 ? 'undtagelse' : 'overskredet', kilde: `BN1-38-6 tabel 11.3.2-1 (kl. ${kk})` });
+        }
         if (sam) {
           const n = Math.max(okKrav.normal, rN), u = Math.max(okKrav.undtagelse, rU);
           checks.push({ label: `Overgang ${i + 1}: overgangskurve/rampe`, value: `${fmt(t.okl)} m`, graense: `≥ ${fmt(n, 1)} / ${fmt(u, 1)} m`, status: st3(t.okl, n, u), kilde: 'SR87 afsn. 2.05–2.06 · antaget' });
@@ -208,7 +217,7 @@ export const tracetavler: Module = {
         steps: alle.map((t) => ({ label: `km ${km(t.pos)}`, formel: `Tavle «${t.symbol}» – ${t.punkt}`, indsat: `Rad ${t.rad ?? '–'} · Okl ${t.okl ?? '–'} · Kvl ${t.kvl ?? '–'}`, resultat: `Ovh ${t.ovh ?? '–'} · Rpl ${t.rpl ?? '–'}` })),
         checks,
         noter: [...adv, placering, `Opsætningstolerance ±${fmt(TAVLE_TOLERANCE, 1)} m. Udfyldning efter BN2-93-1 afsn. 10.2–10.3 og bilag 1–2.`],
-        refs: ['BN2-93', 'SR87', 'ST16', ...(set.tsi ? ['TSI-INF'] : [])],
+        refs: ['BN2-93', 'SR87', 'ST16', 'BN1-38', ...(set.tsi ? ['TSI-INF'] : [])],
         figur: fig + plates,
       });
     };

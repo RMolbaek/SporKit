@@ -38,13 +38,13 @@ export const REFERENCES: Reference[] = [
   },
   {
     id: 'BN1-38',
-    kort: 'BN1-38',
-    titel: 'Sporbeliggenhedskontrol og sporkvalitetsnormer',
+    kort: 'BN1-38-6',
+    titel: 'Sporbeliggenhedskontrol og sporkvalitetsnormer (udgivet 01.01.2019)',
     udgiver: 'Banedanmark',
     type: 'Banenorm',
-    anvendelse: 'Vridning og målebaser (1½/2, 2½/3, 6, 9, 12, 15 m), sporvidde, fejlklasser ved sporjustering.',
+    anvendelse: 'Kvalitetsklasser, absolut overhøjde (177/187 og 180/190 mm), vridning pr. målebase (tabel 11.3.2-1, afsnit 17), sporvidde (tabel 11.3.2-2), projekteret ækvivalent konicitet (tabel 11.5.2-1/-2) og R = 10 000/p fra målevognsdiagram.',
     url: 'https://www.bane.dk/-/media/Bane/Dokumenter/Leverandoer/Teknisk-dokumentation/Tekniske-normer-og-regler/Banenormer/BN1_38_6-Sporbeliggenhedskontrol-og-sporkvalitetsnormer.pdf',
-    gennemgaaet: false,
+    gennemgaaet: true,
   },
   {
     id: 'BN1-49',

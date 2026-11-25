@@ -40,6 +40,8 @@ Alle grænseværdier ligger samlet i [`src/core/rules.ts`](src/core/rules.ts) me
 
 **TSI INF** ([`src/core/tsi.ts`](src/core/tsi.ts)) er gengivet fra den konsoliderede udgave af forordning (EU) nr. 1299/2014 af 28.09.2023 og kontrolleres som et ekstra lag i modulerne for overhøjde, hastighed, radius, lodret kurve, pilhøjde/sporvidde og perron (kan slås fra under *Regelgrundlag*).
 
+**BN1-38-6** ([`src/core/bn138.ts`](src/core/bn138.ts)) bruges til at kontrollere, at den projekterede geometri efterlader margin til sporkvalitetsnormerne: absolut overhøjde, vridning fra overhøjderamper pr. målebase, sporvidde og projekteret ækvivalent konicitet.
+
 Perrontabellerne i [`src/core/perron.ts`](src/core/perron.ts) er gengivet fra BN1-49-1 (2006). Referencelisten ligger i [`src/core/references.ts`](src/core/references.ts).
 
 SporKit er et hjælpeværktøj og erstatter ikke projektering efter gældende banenormer.

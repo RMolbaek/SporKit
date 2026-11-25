@@ -4,8 +4,9 @@ import {
 } from '../core/formulas';
 import { setReport } from '../core/report';
 import { tsiCurveChecks } from '../core/tsi';
+import { kvalitetsklasse, ABS_OVH, OVH_AFVIGELSE, lavVridMax, vridGraense } from '../core/bn138';
 import { trackCrossSection } from '../ui/track';
-import { card, fmt, form, h, limitText, loadState, results, saveState, chip, graense, kildeTekst, select, tsiBlock, type Module } from '../ui/dom';
+import { card, fmt, form, h, limitText, loadState, results, saveState, chip, graense, kildeTekst, select, tsiBlock, bn138Block, type Module } from '../ui/dom';
 
 type S = { R: number; V: number; Vmin: number; h: number };
 const DEF: S = { R: 1200, V: 160, Vmin: 80, h: 110 };
@@ -57,6 +58,18 @@ export const overhoejde: Module = {
         R: st.R, V: st.V, h: st.h, I: Math.max(0, I), trafik: set.tsiTrafik, spor: set.tsiSpor,
         perron: opt.perron === 'ja', nyStraekning: set.nyStraekning,
       }) : [];
+      const kk = kvalitetsklasse(st.V);
+      const abs = ABS_OVH[set.tsiTrafik];
+      const tol1 = OVH_AFVIGELSE[kk][1];
+      const hTol = st.h + tol1;
+      const lav = lavVridMax(st.R, st.h);
+      const vg3 = vridGraense(kk, 3);
+      const bnRows = [
+        { label: `Absolut overhøjde + udførelsestolerance (fejlkl. 1, kvalitetsklasse ${kk})`, value: `${fmt(st.h)} + ${tol1} = ${fmt(hTol)} mm`, graense: `≤ ${abs.fk4} mm (fk 4) · Max ${abs.max} mm`,
+          status: (hTol <= abs.fk4 ? 'ok' : hTol <= abs.max ? 'undtagelse' : 'overskredet') as 'ok' | 'undtagelse' | 'overskredet',
+          tekst: hTol <= abs.fk4 ? undefined : hTol <= abs.max ? 'Ingen margin' : undefined, kilde: 'BN1-38-6 tabel 11.3.2-1' },
+        ...(st.R <= 500 ? [{ label: 'Vridningsgrænse (Max, 3 m) i kurven', value: lav ? `h > (R − 100)/2 = ${fmt((st.R - 100) / 2)}` : `h ≤ (R − 100)/2 = ${fmt((st.R - 100) / 2)}`, graense: `Max ${fmt(lav ? vg3.max[0] : vg3.max[1], 1)} mm/m`, status: 'ok' as const, tekst: lav ? 'Skærpet' : 'Normal', kilde: 'BN1-38-6 afsnit 17' }] : []),
+      ];
       const fig = trackCrossSection({ svelle: opt.svelle as 'S99' | 'S16', h: st.h, V: st.V });
 
       out.innerHTML = `
@@ -92,6 +105,7 @@ export const overhoejde: Module = {
                <button class="btn-link" data-apply="${forslag}">Brug forslag</button></p>`
             : `<p class="tip bad">Radius er for lille til både V = ${st.V} og V<sub>min</sub> = ${st.Vmin} km/t inden for normalbestemmelserne. Øg R, sænk V eller hæv V<sub>min</sub>.</p>`}
         </div>
+        ${bn138Block(bnRows, `BN1-38 måler absolut overhøjde fra 0-linjen. Projekteret overhøjde plus den tilladte afvigelse efter justering bør holde sig under fejlklasse 4, ellers vil sporet hurtigt give målevognsfejl. Trafiktype styres under Regelgrundlag.`)}
         ${tsiBlock(tsiRows, `TSI-indstillinger: ${set.tsiTrafik === 'person' ? 'ren persontrafik' : 'blandet trafik'}, ${set.tsiSpor === 'ballast' ? 'ballasteret' : 'fast'} spor${set.nyStraekning ? ', ny strækning' : ''} (ændres under Regelgrundlag). Godsvogne efter TSI WAG: I ≤ 130 mm ved V ≤ 160 km/t.`)}
         <h3>Tværprofil i kurven (ægte skala)</h3>
         ${fig}
@@ -126,13 +140,14 @@ export const overhoejde: Module = {
           { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: graense(rs.overhoejdeMax), status: sH, kilde: kildeTekst(rs.overhoejdeMax) },
           { label: 'Overhøjdeunderskud I', value: `${fmt(I, 1)} mm`, graense: graense(LI), status: sI, kilde: kildeTekst(LI) },
           { label: 'Overhøjdeoverskud E', value: `${fmt(E, 1)} mm`, graense: graense(rs.overskydendeOverhoejdeMax), status: sE, kilde: kildeTekst(rs.overskydendeOverhoejdeMax) },
+          ...bnRows.map((r) => ({ ...r, label: `BN1-38: ${r.label}` })),
           ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
         ],
         noter: [
           wN.muligt ? `Tilladt interval (normal): ${fmt(wN.lav)}–${fmt(wN.hoej)} mm. Forslag: h = ${fmt(forslag)} mm.` : 'Der findes intet tilladt overhøjdeinterval efter normalbestemmelserne.',
           'Lavere overhøjde kan være krævet ved perroner, overkørsler og hvor tog skal holde stille (Sporregler afsn. 2.03).',
         ],
-        refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6', ...(tsiRows.length ? ['TSI-INF'] : [])],
+        refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6', 'BN1-38', ...(tsiRows.length ? ['TSI-INF'] : [])],
         figur: fig,
       });
     };

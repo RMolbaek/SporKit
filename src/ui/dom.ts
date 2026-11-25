@@ -196,17 +196,30 @@ export interface Module {
 
 /* ------------------------------ TSI-sektion ------------------------------ */
 
-export interface TsiRow { label: string; value: string; graense: string; status: Status; kilde: string }
+export interface TsiRow { label: string; value: string; graense: string; status: Status; kilde: string; tekst?: string }
 
 /** Kompakt tabel med TSI INF-kontroller. */
 export function tsiBlock(rows: TsiRow[], note = ''): string {
+  return normBlock({ flag: 'EU', titel: 'Kontrol mod TSI INF', cls: 'tsi', strip: 'TSI INF (EU) 1299/2014 ' }, rows, note);
+}
+
+/** Kontrol mod BN1-38 (projekteret geometri mod sporkvalitetsnormer). */
+export function bn138Block(rows: TsiRow[], note = ''): string {
+  return normBlock({ flag: '38', titel: 'Kontrol mod BN1-38 (sporkvalitet)', cls: 'tsi bn138', strip: 'BN1-38-6 ' }, rows, note);
+}
+
+export function normBlock(o: { flag: string; titel: string; cls: string; strip: string }, rows: TsiRow[], note = ''): string {
   if (!rows.length) return '';
-  const total: Status = rows.some((r) => r.status === 'overskredet') ? 'overskredet' : 'ok';
-  return `<div class="tsi">
-    <div class="tsi-head"><span class="tsi-flag">EU</span><strong>Kontrol mod TSI INF</strong>${chip(total)}</div>
+  const total: Status = samlet(rows.map((r) => r.status));
+  return `<div class="${o.cls}">
+    <div class="tsi-head"><span class="tsi-flag">${o.flag}</span><strong>${o.titel}</strong>${chip(total)}</div>
     <table class="tbl tsi-tbl"><tbody>${rows.map((r) => `
-      <tr><td><div>${r.label}</div><small>${r.kilde.replace('TSI INF (EU) 1299/2014 ', '')}</small></td>
-      <td>${r.value}</td><td>${r.graense}</td><td>${chip(r.status)}</td></tr>`).join('')}</tbody></table>
+      <tr><td><div>${r.label}</div><small>${r.kilde.replace(o.strip, '')}</small></td>
+      <td>${r.value}</td><td>${r.graense}</td><td>${r.tekst ? `<span class="chip chip-${r.status}">${r.tekst}</span>` : chip(r.status)}</td></tr>`).join('')}</tbody></table>
     ${note ? `<p class="tip">${note}</p>` : ''}
   </div>`;
+}
+
+function samlet(st: Status[]): Status {
+  return st.includes('overskredet') ? 'overskredet' : st.includes('undtagelse') ? 'undtagelse' : 'ok';
 }

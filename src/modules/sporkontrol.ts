@@ -1,11 +1,12 @@
 import { versine, radiusFromVersine, equilibriumCant, maxSpeed } from '../core/formulas';
 import { BANEDANMARK as rs, loadSettings } from '../core/rules';
 import { tsiGaugeIal, tsiStatus, TSI_KILDE } from '../core/tsi';
+import { kvalitetsklasse, vridningKlasse, sporviddeKlasse, lavVridMax, radiusFraDiagram, vridGraense, SPORVIDDE, type Base } from '../core/bn138';
 import { setReport } from '../core/report';
-import { card, fmt, form, h, loadState, results, saveState, tsiBlock, type Module } from '../ui/dom';
+import { card, fmt, form, h, loadState, results, saveState, tsiBlock, bn138Block, type Module } from '../ui/dom';
 
-type S = { R: number; c: number; f: number; h1: number; h2: number; b: number; hm: number; I: number; sv: number; Vs: number };
-const DEF: S = { R: 800, c: 20, f: 62, h1: 55, h2: 40, b: 3, hm: 110, I: 100, sv: 0, Vs: 160 };
+type S = { R: number; c: number; f: number; h1: number; h2: number; b: number; hm: number; I: number; sv: number; Vs: number; p: number };
+const DEF: S = { R: 800, c: 20, f: 62, h1: 55, h2: 40, b: 3, hm: 110, I: 100, sv: 0, Vs: 160, p: 0 };
 
 export const sporkontrol: Module = {
   id: 'sporkontrol',
@@ -32,6 +33,18 @@ export const sporkontrol: Module = {
       const tsiRows = set.tsi && st.sv > 0 ? [
         { label: `Målt sporvidde ved V = ${st.Vs} km/t`, value: `${fmt(st.sv)} mm`, graense: `${fmt(ial.min)} – ${fmt(ial.max)} mm`, status: tsiStatus(st.sv >= ial.min && st.sv <= ial.max), kilde: `${TSI_KILDE} 4.2.8.4, tabel 12` },
       ] : [];
+      const kk = kvalitetsklasse(st.Vs);
+      const baseStd: Base | null = st.b <= 2 ? 2 : st.b <= 3 ? 3 : ([6, 9, 12, 15] as Base[]).find((x) => Math.abs(x - st.b) < 0.01) ?? null;
+      const lav = lavVridMax(Rm, st.hm);
+      const vk = baseStd ? vridningKlasse(tw, kk, baseStd, lav) : null;
+      const vg = baseStd ? vridGraense(kk, baseStd) : null;
+      const gk = st.sv > 0 ? sporviddeKlasse(st.sv, kk) : null;
+      const sg = SPORVIDDE[kk];
+      const Rdiag = st.p > 0 ? radiusFraDiagram(st.p) : NaN;
+      const bnRows = [
+        ...(vk && vg ? [{ label: `Målt vridning over ${fmt(st.b, 1)} m (kvalitetsklasse ${kk})`, value: `${fmt(tw, 2)} mm/m`, graense: `${vg.fk3 !== undefined ? `fk 3 ${fmt(vg.fk3, 1)} · ` : ''}fk 4 ${fmt(vg.fk4, 1)} · Max ${fmt(vk.max, 1)}`, status: vk.status, tekst: vk.status === 'ok' ? undefined : `Fejlkl. ${vk.fejlklasse}`, kilde: `BN1-38-6 tabel 11.3.2-1${lav ? ', skærpet Max (afsnit 17)' : ''}` }] : []),
+        ...(gk ? [{ label: `Målt sporvidde (kvalitetsklasse ${kk})`, value: `${fmt(st.sv)} mm (${st.sv - 1435 >= 0 ? '+' : ''}${fmt(st.sv - 1435)})`, graense: `fk 4 +${sg.fk4[0]}/−${sg.fk4[1]} · Max +${sg.max[0]}/−${sg.max[1]}`, status: gk.status, tekst: gk.status === 'ok' ? undefined : `Fejlkl. ${gk.fejlklasse}`, kilde: 'BN1-38-6 tabel 11.3.2-2' }] : []),
+      ];
       const bases = [10, 20].map((c) => ({ c, f: versine(st.R, c) }));
       out.innerHTML = `
         <h3>Pilhøjde for radius</h3>
@@ -48,6 +61,8 @@ export const sporkontrol: Module = {
         ${results([
           { symbol: 'v', label: `Vridning over ${fmt(st.b, 1)} m`, value: fmt(tw, 2), unit: 'mm/m', big: true, sub: `|h₁ − h₂| / b = ${fmt(twSum)} mm / ${fmt(st.b, 1)} m` },
         ])}
+        ${bn138Block(bnRows, `Kvalitetsklasse ${kk} ud fra V = ${st.Vs} km/t. ${baseStd ? '' : 'Vridning vurderes kun for standardmålebaserne 1,5/2, 2,5/3, 6, 9, 12 og 15 m. '}Grænserne er for målevogn/-dræsine; for håndmåling se tabel 11.3.3.`)}
+        ${st.p > 0 ? `<h3>Radius fra målevognsdiagram</h3>${results([{ symbol: 'R', label: `Pilhøjde p = ${fmt(st.p, 1)} mm på diagrammet`, value: fmt(Rdiag), unit: 'm', sub: 'R = 10 000 / p (BN1-38 afsnit 17)' }])}` : ''}
         <h3>Sporvidde – grænse for øjeblikkeligt indgreb</h3>
         ${results([{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
         ${tsiBlock(tsiRows)}
@@ -70,7 +85,7 @@ export const sporkontrol: Module = {
           { label: 'Hastighed', formel: 'V = √(R·(h + I)/C)', indsat: `√(${fmt(Rm, 1)}·(${st.hm} + ${st.I})/11,80)`, resultat: `${fmt(Vm, 1)} km/t` },
           { label: 'Vridning', formel: 'v = |h₁ − h₂|/b', indsat: `|${st.h1} − ${st.h2}|/${fmt(st.b, 1)}`, resultat: `${fmt(tw, 2)} mm/m` },
         ],
-        checks: tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
+        checks: [...bnRows.map((r) => ({ ...r, label: `BN1-38: ${r.label}` })), ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` }))],
         noter: ['Grænseværdier for vridning og overhøjdens ujævnhed fremgår af BN1-38 (fejlklasser). TSI INF 4.2.8.3 henviser for vridning til EN 13848-5 og kræver mindst én målebase mellem 2 og 5 m.'],
         refs: ['BN1-38', 'ST16', 'EN13848', 'SR87', 'TSI-INF'],
       });
@@ -85,7 +100,8 @@ export const sporkontrol: Module = {
       { key: 'h2', label: 'Målt overhøjde, punkt 2', symbol: 'h₂', unit: 'mm', min: -50, max: 200, step: 1 },
       { key: 'b', label: 'Målebase', symbol: 'b', unit: 'm', min: 1, max: 20, step: 0.5 },
       { key: 'sv', label: 'Målt sporvidde (0 = ingen)', symbol: 'G', unit: 'mm', min: 0, max: 1480, step: 1 },
-      { key: 'Vs', label: 'Hastighed (til sporviddegrænse)', symbol: 'V', unit: 'km/t', min: 10, max: 300, step: 5 },
+      { key: 'Vs', label: 'Hastighed (kvalitetsklasse)', symbol: 'V', unit: 'km/t', min: 10, max: 300, step: 5 },
+      { key: 'p', label: 'Pilhøjde på målevognsdiagram (0 = ingen)', symbol: 'p', unit: 'mm', min: 0, max: 100, step: 0.5 },
     ], st, update);
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));
     update();

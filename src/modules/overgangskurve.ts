@@ -3,7 +3,8 @@ import {
   cantDeficiency, transitionLengths, clothoid, roundTo, clothoidParamCompound, rampTwist,
 } from '../core/formulas';
 import { setReport } from '../core/report';
-import { card, chip, fmt, form, h, loadState, results, saveState, graense, kildeTekst, type Module } from '../ui/dom';
+import { kvalitetsklasse, vridGraense, lavVridMax, rampeVridning, BASER, BASE_TEKST } from '../core/bn138';
+import { card, chip, fmt, form, h, loadState, results, saveState, graense, kildeTekst, bn138Block, type Module } from '../ui/dom';
 
 type S = { V: number; R1: number; h1: number; R: number; h: number; L: number };
 const DEF: S = { V: 160, R1: 0, h1: 0, R: 1500, h: 100, L: 0 };
@@ -68,6 +69,21 @@ export const overgangskurve: Module = {
       const sRampe = g.rampe >= nKrav - 1e-6 ? 'ok' : g.rampe >= nUndt - 1e-6 ? 'undtagelse' : 'overskredet';
       const total = samletStatus([sDh, sDi, sDs, sRampe]);
       const tw = [3, 6, 9, 12, 15].map((b) => ({ b, ...rampTwist(dh, L, b) }));
+      const kk = kvalitetsklasse(st.V);
+      const lav = lavVridMax(st.R, Math.max(h1, st.h));
+      const bnRows = BASER.map((b) => {
+        const g = vridGraense(kk, b);
+        const v = rampeVridning(dh, L, b);
+        const max = lav ? g.max[0] : g.max[1];
+        let status: 'ok' | 'undtagelse' | 'overskredet' = 'ok';
+        let tekst: string | undefined;
+        let graenseTxt = `fk 4 ≤ ${fmt(g.fk4, 1)} · Max ${fmt(max, 1)}`;
+        if (b === 3 && g.fk3 !== undefined && g.fk1 !== undefined) {
+          graenseTxt = `+ ${fmt(g.fk1, 1)} (fk 1) ≤ ${fmt(g.fk3, 1)} (fk 3) · fk 4 ${fmt(g.fk4, 1)}`;
+          if (v + g.fk1 > g.fk3) { status = v <= g.fk4 ? 'undtagelse' : 'overskredet'; tekst = v <= g.fk4 ? 'Lille margin' : undefined; }
+        } else if (v > g.fk4) { status = v <= max ? 'undtagelse' : 'overskredet'; tekst = v <= max ? 'Over fk 4' : undefined; }
+        return { label: `Vridning fra rampe, målebase ${BASE_TEKST[b]}`, value: `${fmt(v, 2)} mm/m`, graense: graenseTxt, status, tekst, kilde: `BN1-38-6 tabel 11.3.2-1, kvalitetsklasse ${kk}${lav ? ', skærpet Max' : ''}` };
+      });
 
       out.innerHTML = `
         <div class="summary summary-${total}">
@@ -107,6 +123,7 @@ export const overgangskurve: Module = {
           { symbol: '', label: 'Mellem ensvendte buer', value: `${fmt(st.R1)} → ${fmt(st.R)}`, unit: 'm',
             sub: 'Fælles overgangskurve; rampen udligner Δh (Sporteknik s. 249)' },
         ])}
+        ${bn138Block(bnRows, `Vridning (fejlklasse 3, 4 og Max) måles fra 0-linjen, så rampens projekterede vridning tæller fuldt med. For 3 m-basen er der lagt plads til afvigelsen efter justering (fejlklasse 1). ${lav ? 'Skærpet Max-grænse, fordi R ≤ 500 m og h > (R − 100)/2 (afsnit 17).' : ''}`)}
         ${diagram(L, h1, st.h, I1, I2)}
       `;
 
@@ -138,6 +155,7 @@ export const overgangskurve: Module = {
           { label: 'Underskudsændring dI/dt', value: `${fmt(dIdt, 1)} mm/s`, graense: graense(rs.dIdtMax), status: sDi, kilde: kildeTekst(rs.dIdtMax) },
           { label: 'Rampehældning', value: Number.isFinite(g.rampe) ? `1:${fmt(g.rampe)}` : '–', graense: `1:${fmt(nKrav)} / 1:${fmt(nUndt)}`, status: sRampe, kilde: kildeTekst(rs.rampeFaktor) },
           { label: 'Stejleste rampe dh/ds', value: `${fmt(dhds, 2)} mm/m`, graense: graense(rs.dhdsMax), status: sDs, kilde: kildeTekst(rs.dhdsMax) },
+          ...bnRows.map((r) => ({ ...r, label: `BN1-38: ${r.label}` })),
         ],
         noter: [
           `Styrende kriterie: ${styrende.label.toLowerCase()}. Krævet længde afrundet op til 5 m: ${fmt(Lforslag)} m.`,

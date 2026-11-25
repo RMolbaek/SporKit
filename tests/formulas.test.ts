@@ -284,3 +284,30 @@ describe('BN2-93 tracétavler – bilag 1 og 2', () => {
     expect(kmTekst(12, 345.4)).toBe('12,345');
   });
 });
+
+import { kvalitetsklasse, vridGraense, lavVridMax, rampeVridning, sporviddeKlasse, vridningKlasse, projekteretKonicitet, radiusFraDiagram } from '../src/core/bn138';
+
+describe('BN1-38-6', () => {
+  it('kvalitetsklasser og vridning (tabel 11.3.2-1, afsnit 17)', () => {
+    expect(kvalitetsklasse(250)).toBe('A1');
+    expect(kvalitetsklasse(160)).toBe('B');
+    expect(kvalitetsklasse(40)).toBe('E');
+    expect(vridGraense('B', 3)).toEqual({ fk0: 1.0, fk1: 1.5, fk3: 3.0, fk4: 4.0, max: [6.0, 7.0] });
+    expect(vridGraense('A1', 9).max).toEqual([4.8, 4.8]);
+    expect(lavVridMax(300, 110)).toBe(true);
+    expect(lavVridMax(300, 90)).toBe(false);
+    expect(lavVridMax(600, 150)).toBe(false);
+    expect(rampeVridning(100, 40, 3)).toBeCloseTo(2.5, 6);
+    expect(rampeVridning(100, 10, 15)).toBeCloseTo(100 / 15, 6);
+    expect(vridningKlasse(5, 'B', 3, false).fejlklasse).toBe('4');
+    expect(vridningKlasse(6.5, 'B', 3, true).fejlklasse).toBe('Max');
+  });
+  it('sporvidde, konicitet og diagramradius', () => {
+    expect(sporviddeKlasse(1436, 'B').fejlklasse).toBe('inden for 0');
+    expect(sporviddeKlasse(1428, 'B').fejlklasse).toBe('4');
+    expect(sporviddeKlasse(1471, 'B').fejlklasse).toBe('Max/Min');
+    expect(projekteretKonicitet(1435, 40)).toBeCloseTo(0.095, 6);
+    expect(projekteretKonicitet(1437, 40)).toBeCloseTo(0.072, 6);
+    expect(radiusFraDiagram(10)).toBe(1000);
+  });
+});

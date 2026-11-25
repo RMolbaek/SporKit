@@ -1,5 +1,6 @@
 import { SVELLER, SKINNE_60E2, TVAERPROFIL, SVELLEAFSTAND, MELLEMLAEG_DMP, type SvelleType } from '../core/overbygning';
 import { setReport } from '../core/report';
+import { projekteretKonicitet, konicitetGraense } from '../core/bn138';
 import { trackCrossSection, railDetail, planView } from '../ui/track';
 import { card, fmt, form, h, loadState, saveState, select, type Module } from '../ui/dom';
 
@@ -19,6 +20,8 @@ export const overbygning: Module = {
       saveState('overbygning-opt', opt);
       const sv = SVELLER[opt.svelle as SvelleType];
       const fig = trackCrossSection({ svelle: sv.id, h: st.h, V: st.V });
+      const kon = projekteretKonicitet(sv.sporvidde as 1435 | 1437, 40);
+      const konG = konicitetGraense(st.V);
       const rows: [string, string][] = [
         ['Overbygning', sv.overbygning], ['Befæstelse', sv.befaestelse],
         ['Højde', `${sv.hoejde} mm`], ['Bredde', `${sv.bredde} mm`], ['Længde', `${fmt(sv.laengde)} mm`],
@@ -26,6 +29,7 @@ export const overbygning: Module = {
         ['Nominel sporvidde', `${fmt(sv.sporvidde)} mm`], ['Svelleafstand', `${SVELLEAFSTAND} mm c/c (hoved-, regional- og S-baner)`],
         ['Skinne', `60E2 · ${SKINNE_60E2.hoejde} mm høj · fod ${SKINNE_60E2.fod} mm · hoved ${SKINNE_60E2.hoved} mm · ca. 60 kg/m`],
         ['Skinnehældning', `1:${SKINNE_60E2.haeldning}`],
+        ['Projekteret ækvivalent konicitet', `${fmt(kon, 3)} (60E2, ${sv.sporvidde} mm, 1:40, værste af 4 hjulsæt) · grænse ${konG !== null ? `≤ ${fmt(konG, 2)} ved V = ${st.V} km/t ${kon <= konG ? '✓' : '✗'}` : 'ingen (V ≤ 60)'} – BN1-38 tabel 11.5.2`],
         ...(sv.id === 'S99' ? [['Mellemlæg (Dmp)', `${MELLEMLAEG_DMP.haard}; ${MELLEMLAEG_DMP.bloed}`] as [string, string]] : []),
       ];
       out.innerHTML = `
@@ -60,7 +64,7 @@ export const overbygning: Module = {
           ...rows.map(([k, v]) => ({ label: k, formel: '', indsat: '', resultat: v })),
         ],
         checks: [],
-        refs: ['ST16', 'BN1-6', 'BN1-66', 'EN13674', 'EN13230'],
+        refs: ['ST16', 'BN1-6', 'BN1-66', 'BN1-38', 'EN13674', 'EN13230'],
         figur: fig + railDetail(sv.id),
       });
     };
