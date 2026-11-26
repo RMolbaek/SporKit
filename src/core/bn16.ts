@@ -108,6 +108,23 @@ export function krav(i: KravInput): Krav {
 
 /* ------------------------------ geometri ------------------------------ */
 
+export type Fald = 'tag' | 'hoejre' | 'venstre';
+
+export const FALD_TEKST: Record<Fald, string> = {
+  tag: 'Tagform – knæk under spormidten',
+  hoejre: 'Ensidigt fald mod højre',
+  venstre: 'Ensidigt fald mod venstre',
+};
+
+/**
+ * Er planumsformen tilladt? BN1-6-7 afsnit 10.2.3: «For enkeltsporede baner tillades knækpunkterne i planum og
+ * råjordsplanum dog placeret under spormidten» (BN1). Ændringslisten: «Mulighed for knækpunkt af planum under
+ * spormidten for enkeltsporede baner er udgået på BN2-niveau»; bilag 1 viser ensidigt fald.
+ */
+export function faldTilladt(projekt: Projekt, fald: Fald): boolean {
+  return fald !== 'tag' || projekt === 'bn1';
+}
+
 export interface SporInput {
   /** Overhøjde [mm] */
   h: number;
@@ -119,6 +136,8 @@ export interface Parametre {
   Bsk: number; a: number; Bt: number; Ut: number; Pb: number; Xp: number; Xrp: number;
   /** Tillæg til Pb i kurvens yderside [m] – lægges kun på den side, hvor sporets overhøjde vender udad */
   PbYder?: number;
+  /** Planumsform ved enkeltspor: 'tag' = knæk under spormidte, 'hoejre'/'venstre' = ensidigt fald mod den side. Dobbeltspor: altid knæk midt mellem sporene. */
+  fald?: Fald;
   hSkulder: number;
   /** Baneskråningens anlæg og dæmningshøjde under planumskant [m] */
   as: number; daemning: number;
@@ -156,6 +175,7 @@ export interface Geometri {
   underballast: P[];
   daemning: P[];
   pbbL: number; pbbR: number;
+  fald: Fald;
   /** Faktisk Pb (vandret fra spormidte til planumskant) venstre / højre [m] */
   PbL: number; PbR: number;
 }
@@ -190,17 +210,19 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
     const shL = rot(-L / 2 - p.Bsk, yTop - hL), shR = rot(L / 2 + p.Bsk, yTop - hR);
     out.push({ cx, theta: ang, pivot, TL, TR, BL, BR, shL, shR, shLtop, shRtop, btVenstre: 0, btHoejre: 0, btMin: 0, railX: [cx - RC, cx + RC] });
   }
-  // Planum: apex ved midten mellem sporene (eller under spormidte), fald k udad.
-  // Bestem apex-højde så den mindste ballasttykkelse under en skinnestreng netop er Bt.
+  // Planum: knæk midt mellem sporene (eller under spormidte) med fald k udad – eller ensidigt fald ved enkeltspor.
+  // Bestem planumshøjden så den mindste ballasttykkelse under en skinnestreng netop er Bt.
+  const fald: Fald = n === 1 ? p.fald ?? 'tag' : 'tag';
+  const form = (x: number, kk: number) => fald === 'tag' ? kk * Math.abs(x - apexX) : (fald === 'hoejre' ? 1 : -1) * kk * (x - apexX);
   let apexY = -Infinity;
   const sbAt = (t: Geometri['spor'][number], x: number) => {
     // svelleunderside er en ret linje mellem BL og BR
     const f = (x - t.BL.x) / (t.BR.x - t.BL.x);
     return t.BL.y + f * (t.BR.y - t.BL.y);
   };
-  for (const t of out) for (const xr of t.railX) apexY = Math.max(apexY, sbAt(t, xr) + p.Bt - k * Math.abs(xr - apexX));
-  const planum = (x: number) => apexY + k * Math.abs(x - apexX);
-  const raajord = (x: number) => apexY + p.Ut + kr * Math.abs(x - apexX);
+  for (const t of out) for (const xr of t.railX) apexY = Math.max(apexY, sbAt(t, xr) + p.Bt - form(xr, k));
+  const planum = (x: number) => apexY + form(x, k);
+  const raajord = (x: number) => apexY + p.Ut + form(x, kr);
   for (const t of out) {
     t.btVenstre = planum(t.railX[0]) - sbAt(t, t.railX[0]);
     t.btHoejre = planum(t.railX[1]) - sbAt(t, t.railX[1]);
@@ -260,7 +282,7 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   const daemning = [rjL, { x: apexX, y: apexY + p.Ut }, rjR, footR, footL];
   return {
     spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, footL, footR, mellem,
-    ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x, PbL, PbR,
+    ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x, PbL, PbR, fald,
   };
 }
 

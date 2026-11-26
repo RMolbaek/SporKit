@@ -76,7 +76,7 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
     <circle cx="${M(g.toeL.x)}" cy="${M(g.toeL.y)}" r="22" class="t-pivot"/><circle cx="${M(g.toeR.x)}" cy="${M(g.toeR.y)}" r="22" class="t-pivot"/>
     <text x="${(M(g.toeL.x) + M(first.shL.x)) / 2 - 80}" y="${(M(g.toeL.y) + M(first.shL.y)) / 2}" text-anchor="end" font-size="${T}" class="t-txt">1:${fmt(p.a, 1)}</text>
     <text x="${(M(g.edgeR.x) + M(g.footR.x)) / 2 + 80}" y="${(M(g.edgeR.y) + M(g.footR.y)) / 2}" font-size="${T}" class="t-txt">1:${fmt(p.as, 1)}</text>
-    <text x="${M(g.edgeR.x)}" y="${M(g.raajord(g.edgeR.x)) + 1.6 * T}" text-anchor="end" font-size="${T * 0.9}" class="t-txt tp-lys">Planum / råjordsplanum ${fmt(p.Xp)} / ${fmt(p.Xrp)} ‰</text>
+    <text x="${M(g.edgeR.x)}" y="${M(g.raajord(g.edgeR.x)) + 1.6 * T}" text-anchor="end" font-size="${T * 0.9}" class="t-txt tp-lys">Planum / råjordsplanum ${fmt(p.Xp)} / ${fmt(p.Xrp)} ‰${g.fald === 'hoejre' ? ' →' : g.fald === 'venstre' ? ' ←' : ''}</text>
     <text x="${M(g.toeR.x) + 40}" y="${M(g.toeR.y) - 0.4 * T}" font-size="${T * 0.85}" class="t-txt t-muted">Pbb ${fmt(g.pbbR, 2)}</text>
     <text x="${M(g.toeL.x) - 40}" y="${M(g.toeL.y) - 0.4 * T}" text-anchor="end" font-size="${T * 0.85}" class="t-txt t-muted">Pbb ${fmt(g.pbbL, 2)}</text>
     <text x="${xmin + 60}" y="${ytop + 1.2 * T}" font-size="${T}" class="t-txt t-muted">Mål i m · svelle L = ${fmt(sv.L)} mm${saenket ? ' · ballast −40 mm mellem skinner' : ''}</text>

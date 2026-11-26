@@ -1,5 +1,5 @@
 import {
-  krav, geometri, areal, kolonne, pbTillaeg, pbTillaegGaelder, SVELLE_DATA, PROJEKT_TEKST, type Projekt, type Svelletype, type Parametre, type SporInput,
+  krav, geometri, areal, kolonne, faldTilladt, FALD_TEKST, type Fald, pbTillaeg, pbTillaegGaelder, SVELLE_DATA, PROJEKT_TEKST, type Projekt, type Svelletype, type Parametre, type SporInput,
 } from '../core/bn16';
 import { tsiTrackCentres } from '../core/tsi';
 import { setReport } from '../core/report';
@@ -11,7 +11,7 @@ interface State extends Parametre {
   V: number; A: number; L: number; R: number;
   h1: number; h2: number;
 }
-type Opt = { projekt: string; sidespor: string; svelle: string; antal: string; ls60: string; yder1: string; yder2: string; auto: string };
+type Opt = { fald: string; projekt: string; sidespor: string; svelle: string; antal: string; ls60: string; yder1: string; yder2: string; auto: string };
 
 const DEF: State = {
   V: 160, A: 22.5, L: 2500, R: 0, h1: 0, h2: 0,
@@ -38,7 +38,7 @@ export const tvaerprofil: Module = {
   beskrivelse: 'Sammensæt et tværprofil for ballasteret spor – ét eller to spor, med overhøjde – og kontrollér det mod BN1-6-7.',
   render(root) {
     const st = loadState<State>('tvaerprofil', DEF);
-    const opt = loadState<Opt>('tvaerprofil-opt', { projekt: 'nyanlaeg', sidespor: 'nej', svelle: 'S99', antal: '2', ls60: 'ja', yder1: '1', yder2: '1', auto: 'ja' });
+    const opt = loadState<Opt>('tvaerprofil-opt', { fald: 'hoejre', projekt: 'nyanlaeg', sidespor: 'nej', svelle: 'S99', antal: '2', ls60: 'ja', yder1: '1', yder2: '1', auto: 'ja' });
     const out = h('div', { class: 'out' });
     const left = h('div', {});
     const paramInputs = new Map<keyof Parametre, { inp: HTMLInputElement; norm: HTMLElement | null; unit: string }>();
@@ -70,6 +70,8 @@ export const tvaerprofil: Module = {
       const sv = { L: st.L, H: SVELLE_DATA[opt.svelle as Svelletype].H };
       const spor: SporInput[] = [{ h: st.h1, yder: opt.yder1 === '1' ? 1 : -1 }];
       if (opt.antal === '2') spor.push({ h: st.h2, yder: opt.yder2 === '1' ? 1 : -1 });
+      const fald: Fald = opt.antal === '1' ? (opt.fald as Fald) : 'tag';
+      st.fald = fald;
       const g = geometri(spor, st, sv);
       // Overhøjdens effekt: samme profil uden overhøjde til sammenligning
       const g0 = geometri(spor.map((s) => ({ ...s, h: 0 })), st, sv);
@@ -98,6 +100,10 @@ export const tvaerprofil: Module = {
         chk(`Planumsbredde Pb ${sd.navn} (${txt})`, sd.Pb, k.Pb + till, 'm');
       }
       chk('Hældning af planum Xp', st.Xp, k.Xp, '‰', 0);
+      if (opt.antal === '1') {
+        const ok = faldTilladt(opt.projekt as Projekt, fald);
+        rows.push({ label: 'Planumsform, enkeltspor', value: fald === 'tag' ? 'knæk' : `ensidigt ${fald === 'hoejre' ? '→' : '←'}`, graense: opt.projekt === 'bn1' ? 'ensidigt / knæk' : 'ensidigt (BN2)', status: ok ? 'ok' : 'overskredet' });
+      }
       chk('Hældning af råjordsplanum Xrp', st.Xrp, k.Xrp, '‰', 0);
       if (k.hYder > 0) chk('Forhøjet ballastskulder h (kurvens yderside)', st.hSkulder, k.hYder, 'm');
       rows.push({ label: 'Ballastfod inden for planum (Pbb ≥ 0)', value: `${fmt(Math.min(g.pbbL, g.pbbR), 2)} m`, graense: '≥ 0,00 m', status: Math.min(g.pbbL, g.pbbR) >= -1e-6 ? 'ok' : 'overskredet' });
@@ -106,6 +112,8 @@ export const tvaerprofil: Module = {
         if (tc !== null) rows.push({ label: 'Sporafstand fs (TSI INF tabel 4, nye strækninger)', value: `${fmt(st.fs, 2)} m`, graense: `≥ ${fmt(tc, 2)} m`, status: st.fs >= tc - 1e-6 ? 'ok' : 'overskredet' });
       }
       const noter = [...k.noter];
+      if (opt.antal === '1' && fald === 'tag' && opt.projekt !== 'bn1') noter.push('Knækpunkt i planum under spormidten ved enkeltspor er udgået på BN2-niveau (BN1-6-7, ændringsliste) – brug ensidigt fald mod grøften/afvandingssystemet (bilag 1). Knæk under spormidten tillades kun på BN1-niveau (afsnit 10.2.3).');
+      if (opt.antal === '1' && fald !== 'tag') noter.push(`Ensidigt fald: planum og råjordsplanum hælder ${fmt(st.Xp)} / ${fmt(st.Xrp)} ‰ mod ${fald === 'hoejre' ? 'højre' : 'venstre'} hen over hele bredden, og ballasttykkelsen Bt styres af skinnestrengen på den høje side.`);
       if (harH) {
         noter.push(`Overhøjde: sporet drejes om inderskinnen, så svelleenden og ballastskulderen i ydersiden løftes, og ballastfoden flyttes ${fmt(Math.max(dFodL, dFodR) * 1000)} mm udad (planum fastholdt af Bt under den laveste skinnestreng). Derfor kræver BN1-6-7 fodnote 4 en større planumsbredde i kurvens yderside.`);
         if (!gaelder) noter.push(opt.projekt === 'nyanlaeg'
@@ -144,7 +152,7 @@ export const tvaerprofil: Module = {
           </div>
         </div>
         ${noter.length ? `<div class="notice">${noter.map((n) => `• ${n}`).join('<br/>')}</div>` : ''}
-        <p class="tip">Ballastskulderen følger svelleoverkanten og er parallel med SO-planet; sporene drejes om inderskinnen. Planum og råjordsplanum falder udad fra ${opt.antal === '2' ? 'midten mellem sporene' : 'spormidten'}, og planum lægges, så den mindste ballasttykkelse under en skinnestreng netop er Bt. Sporafstand: se BN1-154. Mængderne er et overslag (svellernes andel er fratrukket med 0,3 m bredde pr. 0,625 m).</p>
+        <p class="tip">Ballastskulderen følger svelleoverkanten og er parallel med SO-planet; sporene drejes om inderskinnen. Planum og råjordsplanum ${opt.antal === '2' ? 'falder udad fra midten mellem sporene' : fald === 'tag' ? 'falder udad fra spormidten' : `har ensidigt fald mod ${fald === 'hoejre' ? 'højre' : 'venstre'}`}, og planum lægges, så den mindste ballasttykkelse under en skinnestreng netop er Bt. Sporafstand: se BN1-154. Mængderne er et overslag (svellernes andel er fratrukket med 0,3 m bredde pr. 0,625 m).</p>
       `;
       setReport({
         modul: 'Tværprofil (BN1-6-7)',
@@ -157,6 +165,7 @@ export const tvaerprofil: Module = {
           { label: 'Kurveradius', symbol: 'R', value: st.R > 0 ? fmt(st.R) : 'ret spor', unit: 'm' },
           { label: 'Bsk / a / Bt / Ut / Pb / Pb-tillæg yderside', symbol: '', value: `${fmt(st.Bsk, 2)} / ${fmt(st.a, 1)} / ${fmt(st.Bt, 2)} / ${fmt(st.Ut, 2)} / ${fmt(st.Pb, 2)} / ${fmt(st.PbYder ?? 0, 2)}`, unit: 'm' },
           { label: 'Xp / Xrp', symbol: '', value: `${st.Xp} / ${st.Xrp}`, unit: '‰' },
+          { label: 'Planumsform', symbol: '', value: opt.antal === '1' ? FALD_TEKST[fald] : 'Knæk midt mellem sporene', unit: '' },
           ...(opt.antal === '2' ? [{ label: 'Sporafstand', symbol: 'fs', value: fmt(st.fs, 2), unit: 'm' }] : []),
         ],
         steps: [
@@ -197,6 +206,7 @@ export const tvaerprofil: Module = {
       );
       const yder = h('div', { class: 'fields' },
         select('Kurvens yderside, spor 1', 'yder1', [['1', 'Højre'], ['-1', 'Venstre']], opt, update),
+        ...(opt.antal === '1' ? [select('Planumsfald', 'fald', (Object.keys(FALD_TEKST) as Fald[]).map((f) => [f, FALD_TEKST[f]]), opt, update)] : []),
         ...(opt.antal === '2' ? [select('Kurvens yderside, spor 2', 'yder2', [['1', 'Højre'], ['-1', 'Venstre']], opt, update)] : []),
       );
       const man = opt.auto !== 'ja';

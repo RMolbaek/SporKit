@@ -535,3 +535,28 @@ describe('BN1-6-7 fodnote 4: Pb i kurvens yderside', () => {
     expect(g.toeR.x).toBeGreaterThan(g0.toeR.x);
   });
 });
+
+import { faldTilladt } from '../src/core/bn16';
+
+describe('BN1-6-7 ensidigt fald på planum (enkeltspor)', () => {
+  const p = { Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1, fs: 4.5 };
+  it('planum hælder ensidigt, og Bt holdes under den høje streng', () => {
+    const g = geometri([{ h: 0, yder: 1 }], { ...p, fald: 'hoejre' }, SVELLE_DATA.S99);
+    expect(g.planum(1) - g.planum(0)).toBeCloseTo(0.04, 9);
+    expect(g.planum(-1) - g.planum(0)).toBeCloseTo(-0.04, 9);
+    expect(g.edgeR.y - g.edgeL.y).toBeCloseTo(0.04 * 7.6, 9);
+    expect(g.spor[0].btVenstre).toBeCloseTo(0.3, 6);
+    expect(g.spor[0].btHoejre).toBeGreaterThan(0.3);
+    const gv = geometri([{ h: 0, yder: 1 }], { ...p, fald: 'venstre' }, SVELLE_DATA.S99);
+    expect(gv.spor[0].btHoejre).toBeCloseTo(0.3, 6);
+    // dobbeltspor ignorerer ensidigt fald
+    const g2 = geometri([{ h: 0, yder: 1 }, { h: 0, yder: 1 }], { ...p, fald: 'hoejre' }, SVELLE_DATA.S99);
+    expect(g2.fald).toBe('tag');
+  });
+  it('knæk under spormidten kun på BN1-niveau', () => {
+    expect(faldTilladt('bn1', 'tag')).toBe(true);
+    expect(faldTilladt('fornyelse', 'tag')).toBe(false);
+    expect(faldTilladt('nyanlaeg', 'tag')).toBe(false);
+    expect(faldTilladt('nyanlaeg', 'hoejre')).toBe(true);
+  });
+});
