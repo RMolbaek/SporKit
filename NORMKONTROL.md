@@ -155,6 +155,20 @@ Alle 719 tværsnit stemmer:
 
 🔧 Rampen for R ≤ 250 m søges nu efter afstand (alle kurver inden for 12 m) i stedet for kun to elementer frem og tilbage.
 
+**Inderside og yderside.** Målt på modellens geometri i både en højre- og en venstrekurve (R 350 m, h = 100 mm):
+
+| Forhold | Kilde | Resultat |
+|---|---|---|
+| Ydersiden bestemmes af kurveretningen (højrekurve → venstre side er yderside) | – | ✅ også i LandXML (rot cw/ccw, CantStation curvature) |
+| Overhøjde: den ydre skinnestreng løftes, den indre ligger i profilkoten | Sporregler 2.03.1 | ✅ ydre skinne + h·1507/1500 |
+| Fritrummet hælder med SO-planet; højder måles vinkelret på og bredder parallelt med SO-planet | BN1-166-1 10.2, fig. 10.2-1 | ✅ toppen flyttes 328 mm mod kurvens centrum; tilbage i sporplanet er profilet symmetrisk |
+| Breddeforøgelse e på både inder- og yderside | BN1-166-1 fig. 12-1 | ✅ |
+| Profilmidte midt i det udvidede spor | BN1-166-1 5.33 | ✅ linjeføringen er profilmidten |
+| Pb-tillæg kun i kurvens yderside | BN1-6-7 fodnote 4 | ✅ +0,30 m i ydersiden, intet i indersiden |
+| Forhøjet ballastskulder kun i ydersiden | BN1-6-7 fodnote 7/8/10 | ✅ |
+| IFC 4.3: overhøjden på den ydre skinne (StartCantLeft/Right) | IFC 4.3 | ✅ |
+| ➕ Sporudvidelse: +5/+10/+15 mm ved R < 190/175/150 m, fuld i cirkelbuens startpunkt og jævnt over overgangskurven. Uden overgangskurve etableres den med 2,5 mm pr. 5 sveller. Hver skinne flyttes det halve udad. | Sporregler 2.12.2 | ✅ tilføjet på skinnerne |
+
 **DXF:** DXF-eksporten (R12) er valideret med ezdxf: 0 fejl, globale koordinater, og volumenerne er de samme som i IFC.
 
 **Linjeføring:**

@@ -7,6 +7,7 @@
  * Linjeføringens kote er SO for den indvendige skinne (sporet drejes om den).
  */
 import { breddeforoegelse, hoejdeaendring, profilMedTillaeg, VEDLIGEHOLDELSESTILLAEG, type ProfilNavn } from './fritrum';
+import { sporudvidelse } from './rules';
 import { forhoejetSkulder, geometri, kolonne, pbTillaeg, pbTillaegGaelder, SVELLE_DATA, type Fald, type Projekt as BnProjekt, type Svelletype } from './bn16';
 import { cantVed, hPunkt, snitStationer, stationVed, vPunkt, type Linjefoering } from './linjefoering';
 
@@ -128,6 +129,30 @@ export function eVed(lf: Linjefoering, d: number, afrund = true, adv?: Set<strin
     }
   }
   return e;
+}
+
+/**
+ * Sporudvidelse [mm] i afstanden d (Sporregler 2.12.2): fuld ved cirkelbuens startpunkt, jævnt over overgangskurven;
+ * uden overgangskurve etableret med 2,5 mm pr. 5 sveller (5 × 0,6 m) før buen. Profilmidten ligger midt i det udvidede
+ * spor (BN1-166-1 5.33), så hver skinne flyttes det halve udad.
+ */
+export function sporudvidelseVed(lf: Linjefoering, d: number): number {
+  const p = hPunkt(lf, d);
+  const af = (R: number) => sporudvidelse(Math.abs(R));
+  const s0 = lf.h[p.i];
+  let u = s0.type === 'kurve' ? af(s0.R0) : s0.type === 'overgang' ? af(s0.R0) + (af(s0.R1) - af(s0.R0)) * Math.max(0, Math.min(1, (d - s0.d0) / (s0.L || 1))) : 0;
+  for (const s of lf.h) {
+    if (s.type !== 'kurve') continue;
+    const us = af(s.R0);
+    if (!us) continue;
+    const L = (us / 2.5) * 3; // 2,5 mm pr. 5 sveller à 0,6 m
+    if (s.d0 - L > d || s.d0 + s.L + L < d) continue;
+    const i = lf.h.indexOf(s), foer = lf.h[i - 1], efter = lf.h[i + 1];
+    if (d >= s.d0 && d <= s.d0 + s.L) u = Math.max(u, us);
+    else if (d < s.d0 && (!foer || foer.type !== 'overgang')) u = Math.max(u, us * (1 - (s.d0 - d) / L));
+    else if (d > s.d0 + s.L && (!efter || efter.type !== 'overgang')) u = Math.max(u, us * (1 - (d - s.d0 - s.L) / L));
+  }
+  return u;
 }
 
 /** Højdeændring ΔhRv [mm] i afstanden d – afsnit 13: lineært fra 25 m før tangentpunktet til fuld værdi i kurven. */
@@ -311,8 +336,9 @@ export function byggModel(lf: Linjefoering, v: ModelValg): Model {
         const ca = Math.cos(hael), sa = Math.sin(hael);
         return drej(cx + aa * ca - bb * sa, aa * sa + bb * ca, h, c.side);
       });
-      skV.push(rail(-RC, -SKINNEHAELDNING));
-      skH.push(rail(RC, SKINNEHAELDNING));
+      const udv = sporudvidelseVed(lf, d) / 2000;
+      skV.push(rail(-RC - udv, -SKINNEHAELDNING));
+      skH.push(rail(RC + udv, SKINNEHAELDNING));
     }
     if (v.ballast || v.daemning) {
       const b = v.bn16;
@@ -376,7 +402,7 @@ export function byggModel(lf: Linjefoering, v: ModelValg): Model {
     if (rvs.length) frEg['Afrundingsradius min.'] = { v: Math.min(...rvs), t: 'L' };
     ny('fritrum', `Fritrum ${v.profil}`, fr, frEg);
     if (v.skinner) {
-      const eg: Record<string, Egenskab> = { Skinneprofil: { v: '60E2 (forenklet omrids)', t: 'T' }, Skinnehældning: { v: '1:40', t: 'T' } };
+      const eg: Record<string, Egenskab> = { Skinneprofil: { v: '60E2 (forenklet omrids)', t: 'T' }, Skinnehældning: { v: '1:40', t: 'T' }, 'Sporudvidelse maks.': { v: Math.max(...S_.map((x) => sporudvidelseVed(lf, x.d))) / 1000, t: 'L' } };
       ny('skinne', 'Skinne venstre', skV, eg);
       ny('skinne', 'Skinne højre', skH, eg);
     }

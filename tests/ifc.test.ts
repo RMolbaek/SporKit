@@ -340,3 +340,94 @@ describe('DXF-eksport', () => {
     expect(/[^\x00-\x7f]/.test(t)).toBe(false);
   });
 });
+
+describe('Inderside og yderside i højre- og venstrekurver', () => {
+  // ret – OK – højrekurve R 350, h 100 – OK – ret – OK – venstrekurve R 350, h 100 – OK – ret
+  const el: Element[] = [];
+  let km = 0;
+  const add = (type: Element['type'], L: number, R0: number, R1: number, h0 = 0, h1 = 0) => { el.push({ type, km0: km, km1: km + L, L, R0, R1, h0, h1 }); km += L; };
+  add('ret', 50, 0, 0); add('overgang', 60, 0, 350, 0, 100); add('kurve', 80, 350, 350, 100, 100); add('overgang', 60, 350, 0, 100, 0);
+  add('ret', 50, 0, 0); add('overgang', 60, 0, -350, 0, 100); add('kurve', 80, -350, -350, 100, 100); add('overgang', 60, -350, 0, 100, 0); add('ret', 50, 0, 0);
+  const l = byggLinjefoering('sider', el);
+  const m = byggModel(l, { ...valg(), d1: l.laengde, origo: [0, 0, 0], trin: 5, ringe: true, maxObjekt: 1000,
+    bn16: { ...BN16_STANDARD, projekt: 'fornyelse', V: 120, svelle: 'S99', ls60: true } });
+  /** Punkter i snitplanet ved d som (u, w) [mm]: u + = højre i stationeringsretningen, w = over profilkoten. */
+  const snitPkt = (navn: string, d: number) => {
+    const s = m.snit.reduce((a, b) => (Math.abs(b.d - d) < Math.abs(a.d - d) ? b : a));
+    const out: [number, number][] = [];
+    for (const o of m.objekter.filter((x) => x.navn.startsWith(navn))) for (let i = 0; i < o.pts.length; i += 3) {
+      const dx = o.pts[i] - s.x, dy = o.pts[i + 1] - s.y;
+      if (Math.abs(dx * Math.cos(s.phi) + dy * Math.sin(s.phi)) > 1e-6) continue;
+      out.push([(dx * Math.sin(s.phi) - dy * Math.cos(s.phi)) * 1000, (o.pts[i + 2] - s.z) * 1000]);
+    }
+    return { s, p: out };
+  };
+  for (const [navn, d, yder] of [['højrekurve', 150, -1], ['venstrekurve', 400, 1]] as const) {
+    it(`${navn}: ydersiden er ${yder < 0 ? 'venstre' : 'højre'}, og den ydre skinne er hævet h`, () => {
+      const { s } = snitPkt('Skinne', d);
+      expect(s.side).toBe(yder);
+      const topV = Math.max(...snitPkt('Skinne venstre', d).p.map(([, w]) => w));
+      const topH = Math.max(...snitPkt('Skinne højre', d).p.map(([, w]) => w));
+      const ydre = yder < 0 ? topV : topH, indre = yder < 0 ? topH : topV;
+      // inderskinnen er drejepunkt og ligger i profilkoten; den ydre er hævet h (skinnemidter 1507 mm).
+      // Højeste punkt er skinnehovedets hjørne: + 36·(1/40) for hældningen og + 36·sin θ for drejningen
+      const th = Math.asin(100 / 1500), hj = 36 / 40 + 36 * Math.sin(th);
+      expect(indre).toBeGreaterThan(0); expect(indre).toBeLessThan(hj + 0.1);
+      expect(ydre).toBeCloseTo(100 * 1507 / 1500 + hj, 0);
+    });
+    it(`${navn}: fritrummet hælder ind mod kurvens centrum og er symmetrisk i sporplanet`, () => {
+      const { s, p } = snitPkt('Fritrum', d);
+      const th = Math.asin(s.h / 1500);
+      // profilets toppunkt (spormidte, 4800 + 100 mm) ligger mod indersiden
+      const plan = p.map(([u, w]) => tilSporplan(u, w, s.h, s.side));
+      const i = plan.findIndex(([a, b]) => Math.abs(a) < 0.5 && b > 4800);
+      expect(Math.sign(p[i][0])).toBe(-yder);
+      expect(Math.abs(p[i][0])).toBeCloseTo(4900 * Math.sin(th) + 753.5 * (1 - Math.cos(th)), 0);
+      // tilbage i sporplanet: lige bredt til begge sider (e og vedligeholdelsestillæg på både inder- og yderside)
+      expect(Math.max(...plan.map(([a]) => a))).toBeCloseTo(-Math.min(...plan.map(([a]) => a)), 3);
+      expect(Math.max(...plan.map(([a]) => a))).toBeCloseTo(2050 + s.e, 3);
+    });
+    it(`${navn}: Pb-tillæg (BN1-6 fodnote 4) og forhøjet skulder kun i ydersiden`, () => {
+      const p = snitPkt('Underballast', d).p;
+      const pbV = -Math.min(...p.map(([u]) => u)), pbH = Math.max(...p.map(([u]) => u));
+      // kronekant: Pb 3,00 m; yderside + 0,30 m (h = 100 mm); målt ved råjordsplanum udenfor kronen → sammenlign forskellen
+      expect(yder < 0 ? pbV - pbH : pbH - pbV).toBeCloseTo(300, 0);
+      const b = snitPkt('Ballast', d).p;
+      const top = (sgn: number) => Math.max(...b.filter(([u]) => sgn * u > 1200 && sgn * u < 1300).map(([, w]) => w));
+      // skulder i ydersiden ligger 0,10 m over svelleoversiden – højere end indersidens
+      expect(top(yder) - top(-yder)).toBeGreaterThan(100);
+    });
+  }
+});
+
+import { sporudvidelseVed } from '../src/core/ifcmodel';
+describe('Sporudvidelse på skinnerne (Sporregler 2.12.2)', () => {
+  const el: Element[] = [];
+  let km = 0;
+  const add = (type: Element['type'], L: number, R0: number, R1: number) => { el.push({ type, km0: km, km1: km + L, L, R0, R1, h0: 0, h1: 0 }); km += L; };
+  add('ret', 50, 0, 0); add('overgang', 40, 0, 160); add('kurve', 40, 160, 160); add('overgang', 40, 160, 0); add('ret', 50, 0, 0); add('kurve', 40, -180, -180); add('ret', 50, 0, 0);
+  const l = byggLinjefoering('udv', el);
+  it('fuld i cirkelbuen, jævnt over OK, 2,5 mm pr. 5 sveller uden OK', () => {
+    expect(sporudvidelseVed(l, 110)).toBeCloseTo(10, 9);   // R 160: +10 mm
+    expect(sporudvidelseVed(l, 70)).toBeCloseTo(5, 9);     // midt i OK
+    expect(sporudvidelseVed(l, 220)).toBeCloseTo(5, 9);    // R 180: +5 mm
+    expect(sporudvidelseVed(l, 220 - 3)).toBeCloseTo(2.5, 9); // 3 m (5 sveller) før BP
+    expect(sporudvidelseVed(l, 220 - 6.1)).toBe(0);
+  });
+  it('skinnernes indbyrdes afstand vokser med udvidelsen', () => {
+    const m = byggModel(l, { ...valg(), d1: l.laengde, origo: [0, 0, 0], trin: 5, ballast: false, maxObjekt: 1000 });
+    const afstand = (d: number) => {
+      const s = m.snit.reduce((a, b) => (Math.abs(b.d - d) < Math.abs(a.d - d) ? b : a));
+      const u = (navn: string) => {
+        const us: number[] = [];
+        for (const o of m.objekter.filter((x) => x.navn.startsWith(navn))) for (let i = 0; i < o.pts.length; i += 3) {
+          const dx = o.pts[i] - s.x, dy = o.pts[i + 1] - s.y;
+          if (Math.abs(dx * Math.cos(s.phi) + dy * Math.sin(s.phi)) < 1e-6) us.push((dx * Math.sin(s.phi) - dy * Math.cos(s.phi)) * 1000);
+        }
+        return us.reduce((a, b) => a + b, 0) / us.length;
+      };
+      return u('Skinne højre') - u('Skinne venstre');
+    };
+    expect(afstand(110) - afstand(25)).toBeCloseTo(10, 1);
+  });
+});
