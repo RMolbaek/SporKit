@@ -185,7 +185,7 @@ export function card(title: string, body: HTMLElement | string, extraClass = '')
 }
 
 export interface Module {
-  gruppe: 'Linjeføring' | 'Længdeprofil' | 'I sporet' | 'Overbygning' | 'Grundlag';
+  gruppe: 'Projekt' | 'Linjeføring' | 'Længdeprofil' | 'I sporet' | 'Overbygning' | 'Grundlag';
   id: string;
   titel: string;
   kort: string;

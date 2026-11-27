@@ -244,6 +244,58 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .pl-pkt { margin-top: 6px; font: 500 10.5px var(--font); color: #666; }
 .tt-sym { font-family: var(--font); font-weight: 700; }
 .viz-tt { max-width: 100%; }
+
+/* ---------- projekt og hastighedsprofil ---------- */
+.pj-elcard { margin-top: 16px; }
+.pj-tip0 { margin: 0 0 6px; }
+.card-input .inp-sel, .pj-import .inp { min-width: 0; }
+.card-input .inp-sel select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+.pj-knapper { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.pj-felter { grid-template-columns: 1fr 1fr; margin: 10px 0; }
+.pj-felter input[type=text] { font-weight: 500; }
+.pj-data { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pj-data strong { display: block; font-size: 14px; }
+.pj-data small { color: var(--muted); font-size: 12.5px; }
+.pj-import { margin-top: 12px; display: grid; gap: 8px; }
+.pj-ta { width: 100%; font: 12.5px var(--mono); border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: var(--surface); color: var(--text); }
+.pj-map { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pj-map .ed-f span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-tom { padding: 30px 10px; text-align: center; color: var(--muted); }
+.pj-tom h3 { justify-content: center; color: var(--text); }
+.pj-kpi { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 12px 0; }
+.pj-kpi > div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.pj-kpi small { display: block; color: var(--muted); font-size: 12px; }
+.pj-kpi b { font-size: 19px; font-variant-numeric: tabular-nums; }
+.pj-fig { overflow-x: auto; }
+.pj-fig .viz-hp { min-width: 640px; }
+.pj-tbl { overflow-x: auto; margin-top: 8px; }
+.pj-t { font-size: 13px; }
+.pj-t td, .pj-t th { padding: 7px 6px; }
+.pj-t tbody tr[data-i] { cursor: pointer; }
+.pj-t tbody tr[data-i]:hover { background: var(--surface-2); }
+.pj-t tr.pj-r-ret td { color: var(--muted); }
+.pj-t tr.pj-valgt { background: var(--accent-soft) !important; }
+.pj-adv { color: var(--bad); font-weight: 600; }
+.pj-det { margin-top: 14px; border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 12px; background: var(--surface-2); }
+.viz-hp { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.viz .hp-t { font: 500 11px var(--font); fill: var(--muted); }
+.viz .hp-b { font-weight: 700; fill: var(--text); }
+.viz .hp-vl { font: 700 12px var(--font); fill: var(--brand-2); }
+.viz .hp-grid { stroke: var(--line); stroke-width: 1; }
+.viz .hp-akse { stroke: var(--muted); stroke-width: 1; }
+.viz .hp-kurve { fill: var(--accent); opacity: .09; }
+.viz .hp-overgang { fill: var(--accent); opacity: .045; }
+.viz .hp-ramme { fill: none; stroke: var(--accent); stroke-width: 2; }
+.viz .hp-vstr { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.viz .hp-vn { fill: none; stroke: var(--brand-2); stroke-width: 2.6; stroke-linejoin: round; }
+.viz .hp-vu { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 3; }
+.viz .hp-vskilt { fill: none; stroke: var(--bad); stroke-width: 1.4; stroke-dasharray: 2 3; }
+.viz .hp-vsam { fill: none; stroke: var(--ok); stroke-width: 1.8; }
+.viz .hp-krum { fill: none; stroke: var(--text); stroke-width: 1.6; }
+.viz .hp-oh { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+.viz .hp-st-undtagelse { fill: var(--warn); }
+.viz .hp-st-overskredet { fill: var(--bad); }
+
 @media print { .rpt-fig { flex-wrap: wrap; } .rpt-fig .viz-tt, .rpt-fig .plates { flex: 1 1 100%; } .plates { grid-template-columns: repeat(3, 1fr); gap: 6px; } .plate { font-size: 9pt; } }
 .tsi { margin-top: 18px; border: 1px solid color-mix(in srgb, #2f5fb3 35%, var(--line)); border-radius: 14px; padding: 12px 14px; background: color-mix(in srgb, #2f5fb3 5%, var(--surface)); }
 .tsi-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }

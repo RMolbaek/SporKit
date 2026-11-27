@@ -1,5 +1,6 @@
 import './styles.css';
 import type { Module } from './ui/dom';
+import { projekt } from './modules/projekt';
 import { overhoejde } from './modules/overhoejde';
 import { overgangskurve } from './modules/overgangskurve';
 import { radius } from './modules/radius';
@@ -24,7 +25,7 @@ import { getReport, setReport } from './core/report';
 import { buildReportHtml } from './ui/print';
 
 const MODULES: Module[] = [
-  overhoejde, overgangskurve, radius, hastighed, kurveelementer,
+  projekt, overhoejde, overgangskurve, radius, hastighed, kurveelementer,
   lodret, sporkontrol, perron, sikkerhedszone, tracetavler, fritrum, fritrumskontrol, ledninger, kurveudvidelse, overbygning, tvaerprofil, overgangszone, regler, tsi, referencer,
 ];
 

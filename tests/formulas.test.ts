@@ -615,3 +615,45 @@ describe('BN1-13-4 rende på spyd og brønde', () => {
     expect(broendKontrol({ ...b, a: 2.5 }, 2.0, 'h', 1.5)[0].status).toBe('ok');
   });
 });
+
+import { parseTal, parseKm, parseTabel, gaetFelter, elementerFraTabel, analyser, EKSEMPEL_CSV, vaerdierVed } from '../src/core/projekt';
+import { DEFAULT_SETTINGS } from '../src/core/rules';
+
+describe('Projekt: import og hastighedsprofil', () => {
+  it('tal og stationering', () => {
+    expect(parseTal('1.234,5')).toBe(1234.5);
+    expect(parseTal('1234.5')).toBe(1234.5);
+    expect(parseTal('-600')).toBe(-600);
+    expect(parseKm('12+345,678', 'm')).toBeCloseTo(12345.678, 6);
+    expect(parseKm('12,345678', 'km')).toBeCloseTo(12345.678, 6);
+  });
+  it('eksempel importeres med naboværdier i overgangskurverne', () => {
+    const t = parseTabel(EKSEMPEL_CSV);
+    expect(t.delimiter).toBe(';');
+    const f = gaetFelter(t.header);
+    expect(f).toEqual(['type', 'km0', 'km1', 'R0', 'A', 'h0', 'V', 'tekst']);
+    const { elementer, advarsler } = elementerFraTabel(t, { felter: f, kmEnhed: 'auto', positiv: 'hoejre' });
+    expect(advarsler).toEqual([]);
+    expect(elementer.length).toBe(13);
+    expect(elementer[1]).toMatchObject({ type: 'overgang', R0: 0, R1: 800, h0: 0, h1: 120, L: 150 });
+    expect(elementer[6]).toMatchObject({ type: 'kurve', R0: -600, h0: 100 });
+  });
+  it('hastighedsprofil', () => {
+    const t = parseTabel(EKSEMPEL_CSV);
+    const { elementer } = elementerFraTabel(t, { felter: gaetFelter(t.header), kmEnhed: 'auto', positiv: 'hoejre' });
+    const a = analyser(elementer, { V: 160, Vmin: 80, vurderVed: 'profil' }, DEFAULT_SETTINGS);
+    // R = 800, h = 120, I = 100: V = √(220·800/11,8) = 122,1 → 120 km/t for hele kurvegruppen
+    expect(a[2].kriterier[0].Vn).toBeCloseTo(Math.sqrt(220 * 800 / (1500 / (9.81 * 3.6 * 3.6))), 6);
+    expect(a[1].VtN).toBe(120);
+    expect(a[2].VtN).toBe(120);
+    expect(a[3].VtN).toBe(120);
+    expect(a[0].VtN).toBe(160);
+    expect(a.every((x) => x.status !== 'overskredet')).toBe(true);
+    // ved strækningshastighed overskrides I i kurven
+    const b = analyser(elementer, { V: 160, Vmin: 80, vurderVed: 'straekning' }, DEFAULT_SETTINGS);
+    expect(b[2].status).toBe('overskredet');
+    // dI/dt i overgangen: ved V = VtN overholdes normalgrænsen
+    const dIdt = vaerdierVed(elementer[1], a[1].VtN, 80, DEFAULT_SETTINGS).vaerdier.find((v) => v.symbol === 'dI/dt')!;
+    expect(dIdt.status).toBe('ok');
+  });
+});
