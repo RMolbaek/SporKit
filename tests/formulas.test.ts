@@ -561,23 +561,25 @@ describe('BN1-6-7 ensidigt fald på planum (enkeltspor)', () => {
   });
 });
 
-import { aMinOverjord, rendeKontrol, rendeGeometri, SKINNE_YDERKANT } from '../src/core/kabelrende';
+import { aMinOverjord, rendeKontrol, rendeGeometri, broendKontrol, SKINNE_YDERKANT, type RendeParam as RendeParamT } from '../src/core/kabelrende';
 
 describe('BN1-13-4 kabelrende i tværprofil', () => {
-  const r = { a: 4.05, B: 0.4, H: 0.3, t: 0.1, bag: 0.3, placering: 'overjord' as const };
+  const r = { a: 4.05, B: 0.4, H: 0.3, t: 0.1, bag: 0.3, spydDybde: 0.8, placering: 'overjord' as const };
+  const T0 = () => 0.6;
+  const geo = (rr: typeof r | RendeParamT, top = 0.5) => ({ ...rendeGeometri(rr as never, 1, 0, T0), top });
   it('mindste afstand over jord', () => {
     expect(aMinOverjord(160, 3.8)).toBeCloseTo(SKINNE_YDERKANT + 3.25, 9);
     expect(aMinOverjord(100, 3.8)).toBe(3.8);
     expect(aMinOverjord(100, 3.0)).toBeCloseTo(SKINNE_YDERKANT + 2.75, 9);
   });
   it('kontrol over jord og nedgravet', () => {
-    const ok = rendeKontrol({ r, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 0.5, sideTekst: 'h' });
+    const ok = rendeKontrol({ r, geo: geo(r, 0.5), Pb: 3.8, V: 160, station: false, ballastfod: 3.0, sideTekst: 'h' });
     expect(ok.every((c) => c.status === 'ok')).toBe(true);
-    const tæt = rendeKontrol({ r: { ...r, a: 3.9, t: 0.25 }, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 0.5, sideTekst: 'h' });
+    const tæt = rendeKontrol({ r: { ...r, a: 3.9, t: 0.25 }, geo: geo({ ...r, a: 3.9, t: 0.25 }, 0.5), Pb: 3.8, V: 160, station: false, ballastfod: 3.0, sideTekst: 'h' });
     expect(tæt.filter((c) => c.status === 'overskredet').length).toBe(2);
-    const ned = rendeKontrol({ r: { ...r, a: 2.6, t: -0.5, placering: 'nedgravet' }, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 1.2, sideTekst: 'h' });
+    const ned = rendeKontrol({ r: { ...r, a: 2.6, t: -0.5, placering: 'nedgravet' }, geo: geo({ ...r, a: 2.6, t: -0.5, placering: 'nedgravet' }, 1.2), Pb: 3.8, V: 160, station: false, ballastfod: 3.0, sideTekst: 'h' });
     expect(ned.find((c) => c.label.includes('laveste SO'))!.status).toBe('overskredet');
-    const ned2 = rendeKontrol({ r: { ...r, a: 4.0, t: -0.6, placering: 'nedgravet' }, Pb: 3.8, V: 160, station: true, ballastfod: 3.0, dybdeSO: 1.2, sideTekst: 'h' });
+    const ned2 = rendeKontrol({ r: { ...r, a: 4.0, t: -0.6, placering: 'nedgravet' }, geo: geo({ ...r, a: 4.0, t: -0.6, placering: 'nedgravet' }, 1.2), Pb: 3.8, V: 160, station: true, ballastfod: 3.0, sideTekst: 'h' });
     expect(ned2.find((c) => c.label.includes('dækning'))!.status).toBe('overskredet');
   });
   it('geometri og bredere planumskrone', () => {
@@ -589,5 +591,27 @@ describe('BN1-13-4 kabelrende i tværprofil', () => {
     const rg = rendeGeometri(r, 1, 0, g.planum);
     expect(rg.x1).toBeCloseTo(4.05, 9);
     expect(rg.top).toBeCloseTo(g.planum(4.25) - 0.1, 9);
+  });
+});
+
+describe('BN1-13-4 rende på spyd og brønde', () => {
+  const p = { Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1.5, fs: 4.5 };
+  it('spyd i baneskråningen', () => {
+    const g = geometri([{ h: 0, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(g.terraen(g.crestR.x + 0.3)).toBeCloseTo(g.crestR.y + 0.2, 9);
+    const r = { a: 4.1, B: 0.4, H: 0.3, t: 0.4, bag: 0, spydDybde: 0.8, placering: 'spyd' as const };
+    const rg = rendeGeometri(r, 1, 0, g.terraen);
+    expect(rg.frihoejde).toBeCloseTo(0.1, 9);
+    expect(rg.hoejdeMax).toBeCloseTo(0.4 + 0.4 / 1.5, 9);
+    expect(rg.spyd[1].laengde).toBeGreaterThan(rg.spyd[0].laengde);
+    const k = rendeKontrol({ r, geo: rg, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, sideTekst: 'h' });
+    expect(k.find((c) => c.label.includes('største'))!.status).toBe('undtagelse');
+    expect(k.find((c) => c.label.includes('fri højde'))!.status).toBe('ok');
+  });
+  it('brønd 2,50 / 2,30 m', () => {
+    const b = { a: 2.4, B: 0.8, D: 1, t: 0.05, bag: 0.3 };
+    expect(broendKontrol(b, 2.0, 'h', 1.5)[0].status).toBe('undtagelse');
+    expect(broendKontrol({ ...b, a: 2.2 }, 2.0, 'h', 1.5)[0].status).toBe('overskredet');
+    expect(broendKontrol({ ...b, a: 2.5 }, 2.0, 'h', 1.5)[0].status).toBe('ok');
   });
 });

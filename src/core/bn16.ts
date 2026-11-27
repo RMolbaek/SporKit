@@ -172,6 +172,8 @@ export interface Geometri {
   edgeL: P; edgeR: P;
   /** Planumskronens kant (= planumskant, eller længere ude ved banket) */
   crestL: P; crestR: P;
+  /** Terrænoverflade: planumskrone, baneskråning og terræn ved dæmningsfod (y nedad) */
+  terraen: (x: number) => number;
   footL: P; footR: P;
   mellem?: P[];
   /** Ballast-polygon (uden sveller) og underballast-polygon */
@@ -287,8 +289,13 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   const footL = { x: crestL.x - sl * p.daemning, y: crestL.y + p.daemning };
   const footR = { x: crestR.x + sl * p.daemning, y: crestR.y + p.daemning };
   const daemning = [rjL, { x: apexX, y: apexY + p.Ut }, rjR, footR, footL];
+  const terraen = (x: number) => {
+    if (x >= crestL.x && x <= crestR.x) return planum(x);
+    const c = x < crestL.x ? crestL : crestR, f = x < crestL.x ? footL : footR;
+    return Math.min(f.y, c.y + Math.abs(x - c.x) / sl);
+  };
   return {
-    spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, crestL, crestR, footL, footR, mellem,
+    terraen, spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, crestL, crestR, footL, footR, mellem,
     ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x, PbL, PbR, fald,
   };
 }

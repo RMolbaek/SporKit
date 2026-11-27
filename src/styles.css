@@ -274,6 +274,8 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .viz .tp-rende { fill: #b9b4aa; stroke: #5d5850; stroke-width: 6; }
 .viz .tp-laag { fill: #8f897d; stroke: #4f4a43; stroke-width: 6; }
 .viz .tp-kabel { fill: #2e2a25; stroke: #e8590c; stroke-width: 8; }
+.viz .tp-spyd { stroke: #4f4a43; stroke-width: 22; stroke-linecap: round; }
+.viz .tp-broend-inde { fill: #3d3a35; opacity: .25; }
 .viz .tp-hjlp { stroke: var(--muted); stroke-width: 4; stroke-dasharray: 14 14; }
 .viz .tp-pbkant { stroke: var(--accent); stroke-width: 8; stroke-dasharray: 30 18; }
 .viz-oz { max-width: 100%; }

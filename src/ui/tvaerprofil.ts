@@ -7,9 +7,13 @@ let n = 0;
 
 export interface RendeTegning {
   cx: number; xi: number; x1: number; x2: number; top: number; bund: number; terr: number; a: number; side: -1 | 1;
+  spyd: { x: number; terr: number; laengde: number }[]; spydDybde: number;
+}
+export interface BroendTegning {
+  cx: number; xi: number; x1: number; x2: number; top: number; bund: number; terr: number; a: number; side: -1 | 1;
 }
 
-export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv: Svelle, saenket: boolean, render: RendeTegning[] = []): string {
+export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv: Svelle, saenket: boolean, render: RendeTegning[] = [], broende: BroendTegning[] = []): string {
   const u = `tp${n++}`;
   const M = (v: number) => v * 1000;
   const pt = (q: { x: number; y: number }) => `${M(q.x).toFixed(1)},${M(q.y).toFixed(1)}`;
@@ -18,7 +22,7 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
   const ytop = -Math.max(900, 6.5 * T);
   const ybot0 = M(Math.max(g.footL.y, g.footR.y));
   const groundY = ybot0;
-  const ybot = ybot0 + (render.length ? 4.5 : 2.6) * Math.max(110, (M(g.footR.x) - M(g.footL.x) + 600) / 55);
+  const ybot = ybot0 + (2.6 + (render.length ? 1.9 : 0) + (broende.length ? 1.9 : 0)) * Math.max(110, (M(g.footR.x) - M(g.footL.x) + 600) / 55);
 
   const dimH = (x1: number, x2: number, y: number, label: string, above = true) => `
     <g class="t-dim"><line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" marker-start="url(#a-${u})" marker-end="url(#a-${u})"/>
@@ -66,7 +70,9 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
     const x = M(r.x1), y = M(r.top);
     const kabler = [0.3, 0.5, 0.7].map((f, j) => `<circle cx="${x + w * f}" cy="${y + hgt - wall - 45 - (j % 2) * 30}" r="${Math.min(38, w * 0.09)}" class="tp-kabel"/>`).join('');
     const yd = groundY + 2.7 * T; // under Pb-målene, så målene ikke krydser ballasten
+    const spyd = r.spyd.map((s) => `<line x1="${M(s.x)}" y1="${M(r.bund)}" x2="${M(s.x)}" y2="${M(s.terr + r.spydDybde)}" class="tp-spyd"/>`).join('');
     return `<g>
+      ${spyd}
       <path d="M ${x},${y + 30} L ${x},${y + hgt} L ${x + w},${y + hgt} L ${x + w},${y + 30} L ${x + w - wall},${y + 30} L ${x + w - wall},${y + hgt - wall} L ${x + wall},${y + hgt - wall} L ${x + wall},${y + 30} Z" class="tp-rende"/>
       <rect x="${x - 10}" y="${y}" width="${w + 20}" height="30" class="tp-laag"/>
       ${kabler}
@@ -75,10 +81,25 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
       <text x="${x + w / 2}" y="${y - 0.45 * T}" text-anchor="middle" font-size="${T * 0.8}" class="t-txt">Kabelrende</text>
     </g>`;
   }).join('');
+  const broendSvg = broende.map((b, j) => {
+    const x = M(b.x1), w = M(b.x2 - b.x1), y = M(b.top), hgt = M(b.bund - b.top), wall = Math.min(80, w * 0.12);
+    const yd = groundY + (render.length ? 4.5 : 2.7) * T;
+    return `<g>
+      <path d="M ${x},${y} L ${x},${y + hgt} L ${x + w},${y + hgt} L ${x + w},${y} L ${x + w - wall},${y} L ${x + w - wall},${y + hgt - wall} L ${x + wall},${y + hgt - wall} L ${x + wall},${y} Z" class="tp-rende"/>
+      <rect x="${x + wall}" y="${y + 40}" width="${w - 2 * wall}" height="${hgt - wall - 40}" class="tp-broend-inde"/>
+      <rect x="${x - 20}" y="${y - 40}" width="${w + 40}" height="40" class="tp-laag"/>
+      <line x1="${M(b.xi)}" y1="${y + hgt}" x2="${M(b.xi)}" y2="${yd}" class="tp-hjlp"/>
+      ${dimH(M(b.cx), M(b.xi), yd, `brønd a ${fmt(b.a, 2)}`, false)}
+      <text x="${x + w / 2}" y="${y - (0.5 + (j % 2) * 0) * T}" text-anchor="middle" font-size="${T * 0.8}" class="t-txt">Brønd</text>
+    </g>`;
+  }).join('');
   const pbKant = [g.edgeL, g.edgeR].filter((e, i) => Math.abs(e.x - (i ? g.crestR.x : g.crestL.x)) > 1e-6)
     .map((e) => `<line x1="${M(e.x)}" y1="${M(e.y) - 160}" x2="${M(e.x)}" y2="${M(e.y) + 160}" class="tp-pbkant"/>`).join('');
-  const xUt = g.edgeL.x + 0.35;
-  const utDim = dimV(M(xUt), M(g.planum(xUt)), M(g.raajord(xUt)), `Ut ${fmt(p.Ut, 2)}`);
+  // Ut-målet sættes i en side uden brønd/rende
+  const optaget = (s: -1 | 1) => broende.some((b) => b.side === s) || render.some((r) => r.side === s && r.x1 < g.crestR.x && r.x2 > g.crestL.x);
+  const utSide: -1 | 1 = optaget(-1) && !optaget(1) ? 1 : -1;
+  const xUt = utSide === -1 ? g.edgeL.x + 0.35 : g.edgeR.x - 0.35;
+  const utDim = dimV(M(xUt), M(g.planum(xUt)), M(g.raajord(xUt)), `Ut ${fmt(p.Ut, 2)}`, utSide === -1 ? 'start' : 'end');
 
   return `
   <svg viewBox="${xmin} ${ytop} ${xmax - xmin} ${ybot - ytop}" class="viz viz-tp" role="img" aria-label="Tværprofil for ballasteret spor">
@@ -93,7 +114,7 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
     <polygon points="${g.underballast.map(pt).join(' ')}" fill="url(#u-${u})" class="t-layer"/>
     <polygon points="${g.ballast.map(pt).join(' ')}" fill="url(#b-${u})" class="t-layer"/>
     ${sporSvg}
-    ${pbKant}${rendeSvg}
+    ${pbKant}${broendSvg}${rendeSvg}
     ${btDims}${utDim}${pbDims}${fsDim}
     <circle cx="${M(g.toeL.x)}" cy="${M(g.toeL.y)}" r="22" class="t-pivot"/><circle cx="${M(g.toeR.x)}" cy="${M(g.toeR.y)}" r="22" class="t-pivot"/>
     <text x="${(M(g.toeL.x) + M(first.shL.x)) / 2 - 80}" y="${(M(g.toeL.y) + M(first.shL.y)) / 2}" text-anchor="end" font-size="${T}" class="t-txt">1:${fmt(p.a, 1)}</text>
