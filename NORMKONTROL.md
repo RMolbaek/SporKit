@@ -120,6 +120,22 @@ IFC-modulet bruger de samme formler som resten af SporKit. Desuden er det kontro
 | Ballast og planum | BN1-6-7 fodnote 4 og 7/8/10 | Pb-tillæg i kurvens yderside og forhøjet skulder beregnes pr. tværsnit ud fra h og R. Øvrige mål hentes fra Tværprofil-modulet | ✅ |
 | Skinne | EN 13674-1 (henvisning) | Forenklet 60E2-omrids (16 punkter) med hældning 1:40. Bruges kun til visualisering og kollisionskontrol | ⚠️ |
 
+**Måling på den eksporterede geometri.** En særskilt test-LandXML er bygget med:
+- R 200 m uden overgangskurve og en sammensat kurve R 200 → 280 m.
+- En overgangskurve R 280 → 180 m, R 180 m og en overgangskurve ud.
+- R 350 m.
+- Afrundingskurver med Rv 1000 m (cirkel), 2000 m (parabel) og 600 m (cirkel).
+
+Knudepunkterne i IFC-filen er projiceret ind på sporet og sammenlignet med normens værdier, beregnet uafhængigt i Python. Det gælder for alle 996 tværsnit:
+- Halv bredde = 2000 + e + 50 mm.
+- Top = 4800 + ΔhRv + 100 mm.
+- Bund i spormidten = max(0, 50 − ΔhRv).
+- Hylden i 760 mm og hjørnet i 3530 mm.
+
+Største afvigelse er 0,07 mm, dvs. koordinaternes afrunding. En regressionstest måler det samme i sporplanet med op til 120 mm overhøjde.
+
+🔧 Fundet og rettet: Præcis i det fælles tangentpunkt mellem to kurver uden overgangskurve (R 200 → 280 m) blev den største kurves e brugt. Nu bruges det største tillæg (figur 12-4/12-5).
+
 **Linjeføring:**
 - Klotoider integreres numerisk (Simpson, højst 1 m mellem knudepunkter).
 - Elementerne forankres i filens start-koordinater og -retninger.

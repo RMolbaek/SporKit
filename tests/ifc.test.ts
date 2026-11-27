@@ -235,3 +235,55 @@ describe('ifcZIP', () => {
     expect(v.getUint32(z.length - 22, true)).toBe(0x06054b50);
   });
 });
+
+import { tilSporplan } from '../src/core/fritrum';
+import type { Element } from '../src/core/projekt';
+
+describe('Tillæg målt på modellens geometri', () => {
+  // Ret 200, R 200 (uden OK), R 280 (sammensat), OK 280→180, R 180 med h = 120 mm, OK ud, ret
+  const el: Element[] = [];
+  let km = 0;
+  const add = (type: Element['type'], L: number, R0: number, R1: number, h0 = 0, h1 = 0) => { el.push({ type, km0: km, km1: km + L, L, R0, R1, h0, h1 }); km += L; };
+  add('ret', 200, 0, 0); add('kurve', 80, 200, 200); add('kurve', 80, 280, 280);
+  add('overgang', 60, 280, 180, 0, 120); add('kurve', 60, 180, 180, 120, 120); add('overgang', 60, 180, 0, 120, 0); add('ret', 200, 0, 0);
+  const l2 = byggLinjefoering('test', el);
+  l2.v = byggLodret([{ d: 0, z: 10 }, { d: 300, z: 13.6, R: 1000, type: 'cirkel' }, { d: 600, z: 11.2, L: 36, type: 'parabel' }, { d: 740, z: 12.6 }]);
+  const E200 = 60000 / 200 - 225, E280 = 3750 / 280, E180 = 60000 / 180 - 225;
+  it('e efter figur 12-3, 12-5, 12-7 og 12-6 – også i det fælles tangentpunkt', () => {
+    expect(eVed(l2, 193)).toBeCloseTo(E200 / 2, 9);
+    expect(eVed(l2, 280)).toBeCloseTo(E200, 9); // tangentpunkt R200/R280: største tillæg
+    expect(eVed(l2, 282)).toBeCloseTo(E200, 9);
+    expect(eVed(l2, 287)).toBeCloseTo((E200 + E280) / 2, 9);
+    expect(eVed(l2, 390)).toBeCloseTo((E280 + E180) / 2, 9);
+    expect(eVed(l2, 510)).toBeCloseTo(E180 / 2, 9);
+  });
+  it('fritrummet målt i sporplanet: halv bredde 2000 + e + 50 og top 4800 + ΔhRv + 100 – også med overhøjde', () => {
+    const m = byggModel(l2, { ...valg(), d1: l2.laengde, origo: [0, 0, 0], trin: 2, skinner: false, ballast: false, ringe: true });
+    let n = 0;
+    m.snit.forEach((s, i) => {
+      const ring = m.ringe![i];
+      const pl = ring.map(([x, y, z]) => {
+        const u = (x - s.x) * Math.sin(s.phi) - (y - s.y) * Math.cos(s.phi);
+        return tilSporplan(u * 1000, (z - s.z) * 1000, s.h, s.side);
+      });
+      const mur = pl.filter(([, v]) => v > 600 && v < 3400).map(([u]) => Math.abs(u));
+      expect(Math.max(...mur), `d=${s.d}`).toBeCloseTo(2050 + s.e, 3);
+      expect(Math.max(...pl.map(([, v]) => v)), `d=${s.d}`).toBeCloseTo(4900 + s.dhRv, 3);
+      if (s.h > 0) n++;
+    });
+    expect(n).toBeGreaterThan(30);
+  });
+  it('små afrundingskurver: ΔhRv = 50.000/Rv (Rv 1000, 2000 og 600 m) og bunden aldrig under SO', () => {
+    expect(dhRvVed(l2, 300)).toBeCloseTo(50, 9);
+    expect(dhRvVed(l2, 600)).toBeCloseTo(25, 9);
+    const l3 = { ...l2, v: byggLodret([{ d: 0, z: 0 }, { d: 370, z: 3.7, R: 600, type: 'cirkel' }, { d: 740, z: 1.85 }]) };
+    expect(dhRvVed(l3, 370)).toBeCloseTo(50000 / 600, 9);
+    const m = byggModel(l3, { ...valg(), d0: 340, d1: 400, origo: [0, 0, 0], trin: 1, skinner: false, ballast: false, ringe: true, overhoejde: false });
+    m.snit.forEach((sn, i) => {
+      const w = m.ringe![i].map(([, , z]) => (z - sn.z) * 1000);
+      expect(Math.min(...w), `d=${sn.d}`).toBeCloseTo(Math.max(0, 50 - sn.dhRv), 3);
+      expect(Math.max(...w), `d=${sn.d}`).toBeCloseTo(4900 + sn.dhRv, 3);
+    });
+    expect(Math.max(...m.snit.map((x) => x.dhRv))).toBeCloseTo(83.333, 3);
+  });
+});

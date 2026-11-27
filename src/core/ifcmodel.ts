@@ -104,7 +104,10 @@ export function eVed(lf: Linjefoering, d: number, afrund = true, adv?: Set<strin
     }
     return 0;
   };
-  const b0 = base(p.i, d);
+  let b0 = base(p.i, d);
+  // I et fælles tangentpunkt gælder det største tillæg (fig. 12-4): medtag også elementet, der slutter her
+  const forrige = lf.h[p.i - 1];
+  if (forrige && Math.abs(forrige.d0 + forrige.L - d) < 1e-6) b0 = Math.max(b0, base(p.i - 1, d));
   let e = b0;
   // Kurver med R ≤ 250 m uden overgangskurve: lineært fra 12 m før til fuld værdi 2 m før BP (fig. 12-3 og 12-5)
   for (let j = Math.max(0, p.i - 2); j <= Math.min(lf.h.length - 1, p.i + 2); j++) {
@@ -119,7 +122,7 @@ export function eVed(lf: Linjefoering, d: number, afrund = true, adv?: Set<strin
     }
     if (!efter || efter.type !== 'overgang') {
       const x = d - (s.d0 + s.L);
-      if (x > 0 && x <= 12) e = Math.max(e, x <= 2 ? ej : b0 + ((ej - b0) * (12 - x)) / 10);
+      if (x >= 0 && x <= 12) e = Math.max(e, x <= 2 ? ej : b0 + ((ej - b0) * (12 - x)) / 10);
     }
   }
   return e;
