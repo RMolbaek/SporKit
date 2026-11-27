@@ -558,3 +558,9 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
   .rpt-sign td { border: 1px solid var(--line); height: 46px; padding: 4px 6px; vertical-align: top; }
   .rpt-sign small { color: var(--muted); }
 }
+.viz .t-trae { fill: #a67c52; stroke: #6b4a2b; }
+.viz .t-staal { fill: #7b8790; stroke: #3d464d; stroke-width: 3; }
+.ob-t tbody tr { cursor: pointer; }
+.ob-t tbody tr:hover { background: var(--surface-2); }
+.ob-t td:nth-child(2), .ob-t td:nth-child(3), .ob-t td:nth-child(5) { text-align: left !important; white-space: normal !important; }
+.ob-afk { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; }

@@ -21,7 +21,7 @@
 | | **Fritrumskontrol af opmålingspunkter** | Indlæs punkter (afstand til spormidte vandret/lodret, overhøjde, beskrivelse) og kontrollér mod profil D, D-GC eller SD – rapport med én side pr. konflikt |
 | | **Ledningsanlæg (BN1-13)** | Krydsende og langsgående ledninger: dybde under SO pr. metode, vinkel, sporskifter, diametre, skinneafstivning, kabelrender og gas/olie-afstande efter BN1-13-4 |
 | | **Kurveudvidelse** | Geometrisk overslag over køretøjers udbøjning |
-| Overbygning | **Svelle og tværprofil** | Tegning af S99/S16 med 60E2, Fastclip og ballastprofil |
+| Overbygning | **Overbygningstyper og svelle** | Alle Banedanmarks overbygningstyper efter Sporteknik (A, B, Bt, C, Cr, Cf, Dt, Db, Dbn, Dm, Dmp, Dme, Dsp) med skinneprofil (DSB37, 45E2, DSB60, 60E1/60E2), svelle (træ, azobé, to-blok, S89/S99/S16, stål) og befæstelse; tegning, km i nettet 2016, normaltegninger og afkodning af betegnelser |
 | | **Tværprofil (BN1-6)** | Interaktivt tværprofil for ét eller to spor med overhøjde; krav efter BN1-6-7 (nyanlæg, sporfornyelse, BN1-minimum), kontrol og mængder |
 | | **Overgangszoner (BN1-6)** | Overgangszoner ved underføringer (Loz, kile, hydraulisk bundet lag, EV2) og mellem nyt og eksisterende bærelag (trin eller jævn ≥ 20 m) |
 | Grundlag | **Regelgrundlag** | Grænseværdier med kildestatus og indstillinger (skinne, TSI-trafik, sportype, nyanlæg) |

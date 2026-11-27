@@ -746,3 +746,25 @@ describe('Forhindringer og bindinger', () => {
     expect(g.checks.some((c) => c.label.startsWith('Tilslutningspunkt') && c.status === 'overskredet')).toBe(true);
   });
 });
+
+import { afkodBetegnelse, OVERBYGNINGER, SKINNER } from '../src/core/overbygning';
+
+describe('Overbygningstyper (Sporteknik)', () => {
+  it('katalog og km 2016', () => {
+    expect(OVERBYGNINGER.map((t) => t.id)).toEqual(['A', 'B', 'Bt', 'C', 'Cr', 'Cf', 'Dt', 'Db', 'Dbn', 'Dm', 'Dmp', 'Dme', 'Dsp']);
+    const km = (id: string) => { const k = OVERBYGNINGER.find((t) => t.id === id)!.km!; return k[0] + k[1] + k[2]; };
+    expect([km('Bt'), km('Db'), km('Dbn'), km('Dm'), km('Dmp'), km('Dt'), km('Cr')]).toEqual([86, 334, 584, 851, 1215, 133, 38]);
+    expect(SKINNER['45E2']).toMatchObject({ hoejde: 141, fod: 126, hoved: 70 });
+  });
+  it('afkodning', () => {
+    const a = afkodBetegnelse('DSB45 Dbn')!;
+    expect(a.skinne!.id).toBe('45E2');
+    expect(a.dele).toEqual(['D: Dobbeltelastisk befæstelse', 'b: Betonsvelle (to-blok)', 'n: Nylonklemplade']);
+    expect(a.type!.id).toBe('Dbn');
+    const c = afkodBetegnelse('UIC60 Crz')!;
+    expect(c.dele[1]).toContain('Ribbeunderlagsplade');
+    expect(c.dele[2]).toContain('Azobé');
+    expect(afkodBetegnelse('UIC60 Dmp')!.dele).toEqual(['D: Dobbeltelastisk befæstelse', 'm: Monobloksvelle (beton)', 'p: Pandrol Fastclip FC (S99)']);
+    expect(afkodBetegnelse('xyz')).toBeNull();
+  });
+});
