@@ -7,7 +7,7 @@ export interface Reference {
   kort: string;
   titel: string;
   udgiver: string;
-  type: 'Banenorm' | 'Regelsæt' | 'Lærebog' | 'Europæisk standard' | 'EU-forordning';
+  type: 'Banenorm' | 'Regelsæt' | 'Lærebog' | 'Europæisk standard' | 'EU-forordning' | 'Åben dataformat';
   anvendelse: string;
   url?: string;
   /** Om SporKit-udvikleren har haft dokumentet i hænde */
@@ -243,6 +243,28 @@ export const REFERENCES: Reference[] = [
     type: 'EU-forordning',
     anvendelse: 'Overhøjde (4.2.4.2), overhøjdeunderskud (4.2.4.3), pludselig ændring af I (4.2.4.4), radier og hældninger (4.2.3), sporafstand (tabel 4), sporvidde-IAL (tabel 12), konicitet (tabel 10), perroner (4.2.9) og dansk særtilfælde 7.7.4.1.',
     url: 'https://eur-lex.europa.eu/legal-content/DA/TXT/?uri=CELEX:02014R1299-20230928',
+    gennemgaaet: true,
+    adgang: 'aaben',
+  },
+  {
+    id: 'IFC',
+    url: 'https://ifc43-docs.standards.buildingsmart.org/',
+    kort: 'IFC 4.3 (ISO 16739-1:2024)',
+    titel: 'Industry Foundation Classes IFC 4.3 ADD2 – åben standard for udveksling af bygværks- og infrastrukturmodeller (også IFC4 og IFC2x3)',
+    udgiver: 'buildingSMART International / ISO',
+    type: 'Åben dataformat',
+    anvendelse: 'IFC-eksport: IfcAlignment (vandret, lodret, overhøjde), IfcRailway, IfcRail, IfcCourse, IfcVirtualElement (CLEARANCE), IfcMapConversion. Dokumentationen er frit tilgængelig hos buildingSMART.',
+    gennemgaaet: true,
+    adgang: 'aaben',
+  },
+  {
+    id: 'LandXML',
+    url: 'https://www.landxml.org/',
+    kort: 'LandXML 1.2',
+    titel: 'LandXML 1.2 – åbent XML-format for linjeføringer, længdeprofiler og overhøjde',
+    udgiver: 'LandXML.org',
+    type: 'Åben dataformat',
+    anvendelse: 'Import af linjeføring (Line/Curve/Spiral med koordinater), længdeprofil (PVI, ParaCurve, CircCurve) og overhøjde (Cant/CantStation).',
     gennemgaaet: true,
     adgang: 'aaben',
   },

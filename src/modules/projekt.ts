@@ -17,6 +17,7 @@ import { setReport } from '../core/report';
 import { saveState } from '../ui/dom';
 import { card, chip, fmt, h, type Module } from '../ui/dom';
 import { kmTekst, profilSvg } from '../ui/hastighedsprofil';
+import { laesTekstfil } from '../ui/fil';
 
 const TYPE_TEKST: Record<Element['type'], string> = { ret: 'Ret', kurve: 'Cirkelbue', overgang: 'Overgang' };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -144,7 +145,7 @@ export const projekt: Module = {
       for (const t of ['eksisterende', 'projekteret'] as DataType[]) {
         const d = p.data[t];
         const fi = h('input', { type: 'file', accept: '.csv,.txt,.tsv,.xml,.landxml,text/plain,text/csv', hidden: '' });
-        fi.addEventListener('change', async () => { const f = fi.files?.[0]; if (f) { laesFil(t, f.name, await f.text()); } fi.value = ''; });
+        fi.addEventListener('change', async () => { const f = fi.files?.[0]; if (f) { laesFil(t, f.name, await laesTekstfil(f)); } fi.value = ''; });
         const row = h('div', { class: 'pj-data' },
           h('div', {}, h('strong', {}, DATA_TEKST[t]), h('small', {}, d ? `${d.filnavn} · ${d.elementer.length} elementer · ${new Date(d.importeret).toLocaleDateString('da-DK')}` : 'Ikke indlæst')),
           h('div', { class: 'pj-knapper' },
@@ -160,7 +161,7 @@ export const projekt: Module = {
         knap('Eksempel: projekt med tilslutning', () => laesFil('projekteret', 'Eksempelprojekt (fiktivt).csv', EKSEMPEL_PROJEKT_CSV)),
         knap('Hent CSV-skabelon', () => download('sporkit-skabelon.csv', EKSEMPEL_CSV, 'text/csv')),
       );
-      left.append(eks, h('p', { class: 'tip' }, 'Formater: CSV/TXT (semikolon, tabulator eller komma; dansk eller engelsk decimaltegn; km som 12+345,678) og LandXML (Line/Curve/Spiral og Cant). Excel: gem arket som CSV. Data bliver i din browser og sendes ikke nogen steder hen.'));
+      left.append(eks, h('p', { class: 'tip' }, 'Formater: CSV/TXT (semikolon, tabulator eller komma; dansk eller engelsk decimaltegn; km som 12+345,678) og LandXML (Line/Curve/Spiral, længdeprofil og Cant – koordinaterne gemmes til IFC-modellen). Excel: gem arket som CSV. Data bliver i din browser og sendes ikke nogen steder hen.'));
 
       if (udkast) left.append(importPanel());
       if (besked) left.append(h('div', { class: 'notice' }, besked));
@@ -228,7 +229,7 @@ export const projekt: Module = {
       const ok = h('button', { type: 'button', class: 'btn-primary btn-sm' }, `Brug ${el.length} elementer`);
       ok.addEventListener('click', () => {
         if (!el.length) return;
-        p.data[u.dataType] = { filnavn: u.filnavn, importeret: new Date().toISOString(), elementer: el };
+        p.data[u.dataType] = { filnavn: u.filnavn, importeret: new Date().toISOString(), elementer: el, geo: u.xml?.[u.xmlValg]?.geo };
         if (p.grundlag !== 'samlet' && !p.data[p.grundlag]) p.grundlag = u.dataType;
         gem(); udkast = null; valgt = null; besked = ''; renderLeft(); update();
       });

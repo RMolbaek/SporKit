@@ -13,6 +13,7 @@ import {
 } from './rules';
 import { cantConstant } from './formulas';
 import type { Forhindring } from './forhindringer';
+import type { GeoData } from './landxml';
 
 export type ElType = 'ret' | 'kurve' | 'overgang';
 
@@ -37,6 +38,8 @@ export interface Datasaet {
   filnavn: string;
   importeret: string;
   elementer: Element[];
+  /** Koordinater, længdeprofil og overhøjde fra LandXML (til 3D/IFC) */
+  geo?: GeoData;
 }
 
 export type DataType = 'eksisterende' | 'projekteret';
@@ -265,73 +268,7 @@ export function elementerFraTabel(tab: Tabel, v: ImportValg): { elementer: Eleme
  * LandXML 1.x: <Alignment><CoordGeom> med <Line>, <Curve> og <Spiral>, samt evt. <Cant> med <CantStation>.
  * Fortegn: rot="cw" = højrekurve (positiv), rot="ccw" = venstrekurve.
  */
-export function parseLandXML(xml: string): { navn: string; elementer: Element[]; advarsler: string[] }[] {
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  if (doc.getElementsByTagName('parsererror').length) throw new Error('Filen kan ikke læses som XML.');
-  const alle = Array.from(doc.getElementsByTagNameNS('*', 'Alignment'));
-  return alle.map((al) => {
-    const advarsler: string[] = [];
-    const sta0 = parseFloat(al.getAttribute('staStart') ?? '0') || 0;
-    const geom = al.getElementsByTagNameNS('*', 'CoordGeom')[0];
-    const elementer: Element[] = [];
-    let km = sta0;
-    for (const el of Array.from(geom?.children ?? [])) {
-      const n = el.localName;
-      const len = parseFloat(el.getAttribute('length') ?? 'NaN');
-      const rot = (el.getAttribute('rot') ?? '').toLowerCase();
-      const sgn = rot === 'ccw' ? -1 : 1;
-      const st = parseFloat(el.getAttribute('staStart') ?? 'NaN');
-      const k0 = Number.isFinite(st) ? st : km;
-      if (n === 'Line') {
-        const L = Number.isFinite(len) ? len : laengdeFraPunkter(el);
-        elementer.push({ type: 'ret', km0: k0, km1: k0 + L, L, R0: 0, R1: 0, h0: 0, h1: 0 });
-        km = k0 + L;
-      } else if (n === 'Curve') {
-        const R = parseFloat(el.getAttribute('radius') ?? 'NaN');
-        const L = Number.isFinite(len) ? len : Math.abs(R * parseFloat(el.getAttribute('delta') ?? '0') * Math.PI / 180);
-        elementer.push({ type: 'kurve', km0: k0, km1: k0 + L, L, R0: sgn * R, R1: sgn * R, h0: 0, h1: 0 });
-        km = k0 + L;
-      } else if (n === 'Spiral') {
-        const rs = el.getAttribute('radiusStart') ?? 'INF', re = el.getAttribute('radiusEnd') ?? 'INF';
-        const r = (s: string) => (/inf/i.test(s) ? 0 : sgn * parseFloat(s));
-        const L = len;
-        const e: Element = { type: 'overgang', km0: k0, km1: k0 + L, L, R0: r(rs), R1: r(re), h0: 0, h1: 0 };
-        const dk = Math.abs(kappa(e.R1) - kappa(e.R0));
-        if (dk > 0) e.A = Math.sqrt(L / dk);
-        elementer.push(e);
-        km = k0 + L;
-      } else if (n !== 'IrregularLine') advarsler.push(`Ukendt element <${n}> sprunget over.`);
-    }
-    // Overhøjde fra <Cant>
-    const cant = al.getElementsByTagNameNS('*', 'Cant')[0];
-    if (cant) {
-      const pkt = Array.from(cant.getElementsByTagNameNS('*', 'CantStation')).map((c) => ({
-        s: parseFloat(c.getAttribute('station') ?? 'NaN'),
-        h: Math.abs(parseFloat(c.getAttribute('appliedCant') ?? 'NaN')) * (cantEnhedMm(cant) ? 1 : 1000),
-      })).filter((p) => Number.isFinite(p.s) && Number.isFinite(p.h)).sort((a, b) => a.s - b.s);
-      const hAt = (s: number) => {
-        if (!pkt.length) return 0;
-        if (s <= pkt[0].s) return pkt[0].h;
-        for (let i = 1; i < pkt.length; i++) if (s <= pkt[i].s) return pkt[i - 1].h + (pkt[i].h - pkt[i - 1].h) * (s - pkt[i - 1].s) / (pkt[i].s - pkt[i - 1].s || 1);
-        return pkt[pkt.length - 1].h;
-      };
-      for (const e of elementer) { e.h0 = Math.round(hAt(e.km0 + 1e-6)); e.h1 = Math.round(hAt(e.km1 - 1e-6)); if (e.type === 'ret') { e.h0 = e.h1 = 0; } }
-    } else advarsler.push('Ingen <Cant> i filen – overhøjde er sat til 0 og skal angives.');
-    return { navn: al.getAttribute('name') ?? 'Linjeføring', elementer, advarsler };
-  });
-}
-
-function cantEnhedMm(cant: Element | globalThis.Element): boolean {
-  // LandXML angiver appliedCant i projektets lineære enhed; antag mm hvis værdier > 1
-  const v = Array.from((cant as globalThis.Element).getElementsByTagNameNS('*', 'CantStation')).map((c) => Math.abs(parseFloat(c.getAttribute('appliedCant') ?? '0')));
-  return v.some((x) => x > 1);
-}
-
-function laengdeFraPunkter(el: globalThis.Element): number {
-  const p = (tag: string) => (el.getElementsByTagNameNS('*', tag)[0]?.textContent ?? '').trim().split(/\s+/).map(Number);
-  const a = p('Start'), b = p('End');
-  return a.length >= 2 && b.length >= 2 ? Math.hypot(b[0] - a[0], b[1] - a[1]) : 0;
-}
+export { parseLandXML } from './landxml';
 
 /* ============================== beregning ============================== */
 

@@ -102,3 +102,47 @@ Følgende er kontrolleret og stemmer ✅:
 - Overhøjdens drejning om inderskinnen.
 
 Mindste radius ved blandet trafik tager nu også højde for formel (4a) ➕.
+
+## IFC-model
+
+IFC-modulet bruger de samme formler som resten af SporKit. Desuden er det kontrolleret, at modellen følger normerne langs sporet, og at filerne er gyldige.
+
+**Normer langs sporet:**
+
+| Emne | Kilde | Sådan gør SporKit | Status |
+|---|---|---|---|
+| Breddeforøgelse e | BN1-166-1 afsnit 12, formel 12.1/12.2 | e = 3750/R (250–300 m) og 60.000/R − 225 (150–250 m) i hele profilhøjden; nedrunding til 0 ved R ≥ 300 m kan slås fra | ✅ |
+| Forløb af e | Figur 12-2 – 12-7 | Lineært over overgangskurver (også mellem to kurver). Ved R ≤ 250 m uden overgangskurve: fra 12 m til fuld værdi 2 m før BP, fra nabokurvens værdi. Ved R > 250 m: fuld værdi i tangentpunktet | ✅ |
+| Højdeændring ΔhRv | Afsnit 13, formel 13.1 | 50.000/Rv; højder ≤ 1170 mm formindskes (aldrig under SO), 3300 < h ≤ 4800/4820 mm forøges; lineært fra 25 m før tangentpunktet | ✅ |
+| Vedligeholdelsestillæg | Afsnit 10.4 | Ballastspor 50/100 mm, fast spor 25/50 mm (vandret/lodret) | ✅ |
+| R < 150 m og Rv < 500 m | Afsnit 12 og 13 | Kræver dispensation. Formlerne bruges alligevel med en advarsel om eftervisning efter EN 15273 | ⚠️ |
+| Overhøjde | Sporregler / Banedanmark-praksis | Sporplan og fritrum drejes om den indvendige skinnes SO (skinnemidte 753,5 mm, θ = arcsin(h/1500)). I IFC 4.3 hæves kun den ydre skinne (IfcAlignmentCant, skinnehovedafstand 1,5 m) | ✅ |
+| Ballast og planum | BN1-6-7 fodnote 4 og 7/8/10 | Pb-tillæg i kurvens yderside og forhøjet skulder beregnes pr. tværsnit ud fra h og R. Øvrige mål hentes fra Tværprofil-modulet | ✅ |
+| Skinne | EN 13674-1 (henvisning) | Forenklet 60E2-omrids (16 punkter) med hældning 1:40. Bruges kun til visualisering og kollisionskontrol | ⚠️ |
+
+**Linjeføring:**
+- Klotoider integreres numerisk (Simpson, højst 1 m mellem knudepunkter).
+- Elementerne forankres i filens start-koordinater og -retninger.
+- Kontrol mod en uafhængig Python-integration af eksempel-LandXML'en giver højst 0,13 mm afvigelse i endepunkterne.
+- Længdeprofilet bygges ud fra PVI'er med parabler (ParaCurve) eller eksakte cirkelbuer (CircCurve). Pilhøjden ved PVI er (g₂ − g₁)·L/8.
+
+**Validering med IfcOpenShell 0.9 (EXPRESS-regler slået til) af eksempelmodellen:**
+
+| Format | Entiteter | Fejl |
+|---|---|---|
+| IFC4X3_ADD2 | ca. 2.100 | 0 |
+| IFC4 | ca. 1.800 | 0 |
+| IFC2X3 | ca. 280.000 | 0 |
+
+**Geometrisk kontrol:**
+- Alle legemer er lukkede og udadvendte. En test kræver, at hver kant bruges præcis én gang i hver retning.
+- Alle volumener er positive.
+- Mængderne svarer til håndberegning: 2 × 1.560 m skinne giver ca. 25 m³, og 2.600 sveller giver ca. 347 m³.
+
+**IfcAlignment (IFC 4.3):**
+- IfcCompositeCurve og IfcGradientCurve skrives med samme kortlægning som IfcOpenShell. Evalueret af IfcOpenShell afviger kurverne højst 0,11 mm fra SporKits egne punkter, både i plan og i kote.
+- Kurverne er også genopbygget alene ud fra de semantiske segmenter (IfcAlignmentHorizontal, Vertical og Cant) med IfcOpenShell. Resultatet stemmer med 0,11 mm.
+- IfcSegmentedReferenceCurve er identisk med IfcOpenShells (0,000 mm) og ligger h/2 over profilet, dvs. i spormidten ved drejning om den indvendige skinne.
+
+⚠️ Overgangskoden mellem en klotoide og en *højre*kurve skriver SporKit som CONTSAMEGRADIENTSAMECURVATURE (matematisk korrekt), mens IfcOpenShell 0.9 vurderer den til CONTSAMEGRADIENT.
+

@@ -564,3 +564,43 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .ob-t tbody tr:hover { background: var(--surface-2); }
 .ob-t td:nth-child(2), .ob-t td:nth-child(3), .ob-t td:nth-child(5) { text-align: left !important; white-space: normal !important; }
 .ob-afk { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+
+/* ---------- IFC-model ---------- */
+.ifc-cbs { display: grid; gap: 6px; margin: 6px 0 4px; }
+.ifc-cb input { accent-color: var(--accent); }
+.ifc-eks { display: grid; gap: 8px; margin-top: 8px; }
+.ifc-eks-r { display: grid; gap: 3px; }
+.ifc-eks-r small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.ifc-eks-r button { justify-self: start; }
+.ifc-3dw { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.ifc-3d { display: block; width: 100%; height: clamp(280px, 52vh, 520px); touch-action: none; cursor: grab; }
+.ifc-3d:active { cursor: grabbing; }
+.ifc-3d-info { position: absolute; left: 10px; top: 8px; font-size: 12.5px; background: color-mix(in srgb, var(--surface) 86%, transparent); padding: 4px 8px; border-radius: 8px; pointer-events: none; }
+.ifc-3d-info span { color: var(--muted); }
+.ifc-vb { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.ifc-vb .btn-sm { padding: 4px 9px; font-size: 12px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 90%, transparent); }
+.ifc-slider { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin: 10px 0 0; }
+.ifc-slider small { color: var(--muted); }
+.ifc-slider input { width: 100%; accent-color: var(--accent); }
+.ifc-objs { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 12px; font-size: 13px; }
+.ifc-obj { display: inline-flex; align-items: center; gap: 6px; }
+.ifc-obj i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
+.ifc-plan, .ifc-graf { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.ifc-plan { cursor: crosshair; }
+.viz .ifc-akse { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; }
+.viz .ifc-udsnit { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.viz .ifc-tick { stroke: var(--text); stroke-width: 1.2; opacity: .55; }
+.viz .ifc-fokus { fill: #3484de; stroke: var(--surface); stroke-width: 2; }
+.viz .ifc-nord { fill: var(--muted); }
+.viz .ifc-skala { stroke: var(--text); stroke-width: 2; }
+.viz .ifc-t { font: 500 11px var(--font); fill: var(--muted); }
+.viz .ifc-ax { stroke: var(--line); stroke-width: 1; }
+.viz .ifc-kurve { fill: var(--accent); opacity: .07; }
+.viz .ifc-e { fill: none; stroke: #3484de; stroke-width: 2; }
+.viz .ifc-dh { fill: none; stroke: #d69e2e; stroke-width: 2; }
+.viz .ifc-h { fill: none; stroke: var(--accent); stroke-width: 2; }
+.viz .ifc-le { fill: #3484de; font-weight: 700; }
+.viz .ifc-ldh { fill: #d69e2e; font-weight: 700; }
+.viz .ifc-lh { fill: var(--accent); font-weight: 700; }
+.ifc-kontrol .tbl td:last-child { white-space: normal; }
+.ifc-tom { padding: 18px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }

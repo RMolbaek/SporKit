@@ -7,6 +7,7 @@
 | Gruppe | Modul | Beregner |
 |---|---|---|
 | Projekt | **Projekt og hastighedsprofil** | Projekter gemt i browseren (eksport/import som fil). Import af spordataliste og geometrirapport (CSV/TXT med kolonnegenkendelse eller LandXML). Hastighedsprofil pr. element og kurvegruppe med h, I, E, a<sub>q</sub>, dh/dt, dI/dt, rampe og fiktivt ryk ved spring uden overgangskurve, diagram over hastighed, krumning og overhøjde. Tilslutning af projekt til eksisterende spor: kontrol af overhøjde og fiktivt ryk i tilslutningspunkterne, samlet spor og tracétavler (BN2-93) med liste over tavler, der er nye, udgår eller skal rettes uden for projektets grænser (CSV). Forhindringer og bindinger (perroner, overkørsler, sporskifter, broer, tunneler, faste punkter) vises i diagrammet og kontrolleres mod geometrien |
+| | **IFC-model** | 3D-model ud fra LandXML-linjeføringen (koordinater, klotoider, længdeprofil og overhøjde) eller projektets spordataliste/geometrirapport: fritrumsprofil D/D-GC/SD med breddeforøgelse e langs sporet (figur 12-2–12-7), højdeændring ΔhRv i afrundingskurver (25 m-rampe) og vedligeholdelsestillæg efter BN1-166-1, drejet med overhøjden om den indvendige skinne; skinner (60E2, 1:40), ballast og underballast efter BN1-6-7 (Pb-tillæg og forhøjet skulder pr. snit), sveller og dæmning. 3D-forhåndsvisning, plan og graf over tillæg. Eksport som **IFC 4.3** (IfcAlignment med vandret, lodret og overhøjde, IfcRailway, IfcRail, IfcCourse, fritrum som IfcVirtualElement CLEARANCE), **IFC4** og **IFC2x3**, evt. som ifcZIP, georefereret i ETRS89/UTM32/33 eller DKTM1–4 + DVR90 |
 | Linjeføring | **Overhøjde** | h<sub>a</sub>, I, E, a<sub>q</sub>, tilladt overhøjdeinterval, krumme sporskifter, tværprofil i ægte skala |
 | | **Overgangskurve og rampe** | Mindste længde (dh/dt, dI/dt, rampe, stejleste rampe), også mellem ensvendte buer; klotoide, vridning fra rampe |
 | | **Mindste radius** | R<sub>min</sub> for valgt h og I og ved blandet trafik |
@@ -40,9 +41,9 @@ Alle moduler kan eksporteres som **PDF-beregningsrapport** med input, beregnings
 
 Alle grænseværdier ligger samlet i [`src/core/rules.ts`](src/core/rules.ts) med en kildestatus:
 
-- **sekundær** – gengivet fra Banedanmarks lærebog *Sporteknik* (2016), som citerer Sporregler (fx h ≤ 160/180 mm, I ≤ 100 mm, I-undtagelse 130/153/160 mm, stigning, lodret radius)
-- **antaget** – ingen dansk kilde fundet endnu (fx E, dh/dt, dI/dt, rampe 1:(k·V)) – skal kontrolleres
-- **verificeret** – kontrolleret i det gældende regelsæt
+- **verificeret** – kontrolleret i Sporregler (SR87 med rettelsesblade til 2017, frit tilgængelig hos Banedanmark) eller den relevante banenorm – det gælder nu alle linjeføringsgrænser, også E, dh/dt, dI/dt og rampe
+- **sekundær** – gengivet fra Banedanmarks lærebog *Sporteknik* (2016)
+- **antaget** – ingen åben kilde fundet – skal kontrolleres
 
 **TSI INF** ([`src/core/tsi.ts`](src/core/tsi.ts)) er gengivet fra den konsoliderede udgave af forordning (EU) nr. 1299/2014 af 28.09.2023 og kontrolleres som et ekstra lag i modulerne for overhøjde, hastighed, radius, lodret kurve, pilhøjde/sporvidde og perron (kan slås fra under *Regelgrundlag*).
 
@@ -60,7 +61,8 @@ SporKit skal være åbent og tilgængeligt for alle:
 - **Data bliver hos brugeren**: alle beregninger sker i browseren; intet sendes til en server.
 - **Kilder**: hver reference er mærket *Frit tilgængelig*, *Skal købes* eller *Ikke fundet offentligt*, og frit tilgængelige kilder er linket – i appen og i PDF-rapporterne. Banedanmarks banenormer ([oversigt](https://www.bane.dk/da/Leverandoer/Krav/Tekniske-normer-og-regler/Banenormer)), lærebogen *Sporteknik* og TSI'erne (EUR-Lex) er frit tilgængelige.
 - **Normkontrol**: alle grænseværdier og formler er gennemgået mod de åbne kilder (Sporregler med rettelser til 2017, banenormerne, Sporteknik og TSI INF) – se [NORMKONTROL.md](NORMKONTROL.md) for hvad der er verificeret, rettet og tilføjet.
-- DS/EN-standarder skal købes; SporKit henviser kun til dem og bruger ikke deres indhold. Sporregler 1987 er ikke fundet offentligt – værdierne er gengivet fra *Sporteknik*.
+- DS/EN-standarder skal købes; SporKit henviser kun til dem og bruger ikke deres indhold. Sporregler (med rettelsesblade til 2017) er hentet fra bane.dk.
+- **Åbne dataformater**: IFC (buildingSMART, ISO 16739-1) og LandXML 1.2. IFC-filerne er valideret mod skemaerne og EXPRESS-reglerne med IfcOpenShell – se [NORMKONTROL.md](NORMKONTROL.md#ifc-model).
 - Grænseværdier uden frit tilgængelig kilde er markeret **«Ingen åben kilde» / «Antaget»** og skal kontrolleres. En automatisk test sikrer, at åbne kilder har et link, og at værdier uden åben kilde er markeret.
 
 ## Udvikling
@@ -68,7 +70,7 @@ SporKit skal være åbent og tilgængeligt for alle:
 ```bash
 npm install
 npm run dev      # udviklingsserver
-npm test         # enhedstest af formler
+npm test         # enhedstest af formler, LandXML, 3D-model og IFC-skrivning
 npm run build    # produktionsbygning i dist/
 ```
 

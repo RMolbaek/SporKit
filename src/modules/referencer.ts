@@ -10,11 +10,11 @@ export const referencer: Module = {
   ikon: '❐',
   beskrivelse: 'Normer, regelsæt og standarder som SporKit bygger på, og hvad de bruges til.',
   render(root) {
-    const grupper = ['Regelsæt', 'Banenorm', 'Lærebog', 'Europæisk standard', 'EU-forordning'] as const;
+    const grupper = ['Regelsæt', 'Banenorm', 'Lærebog', 'Europæisk standard', 'EU-forordning', 'Åben dataformat'] as const;
     const body = grupper.map((g) => {
       const list = REFERENCES.filter((r) => r.type === g);
       if (!list.length) return '';
-      return `<h3>${g === 'Banenorm' ? 'Banenormer' : g === 'Europæisk standard' ? 'Europæiske standarder' : g}</h3>
+      return `<h3>${g === 'Banenorm' ? 'Banenormer' : g === 'Europæisk standard' ? 'Europæiske standarder' : g === 'Åben dataformat' ? 'Åbne dataformater' : g}</h3>
         <div class="refs">${list.map((r) => `
           <div class="ref">
             <div class="ref-head"><span class="ref-id">${r.kort}</span>
