@@ -9,6 +9,10 @@ import {
   type PunktKontrol, type TavleRaekke, type TilslutningInput,
 } from '../core/tilslutning';
 import { parseKm } from '../core/projekt';
+import {
+  kontrollerForhindring, forhindringerFraTekst, FORH_TEKST, FORH_EKSEMPEL,
+  type ForhKontrol, type ForhType, type Forhindring, type Niveau,
+} from '../core/forhindringer';
 import { setReport } from '../core/report';
 import { saveState } from '../ui/dom';
 import { card, chip, fmt, h, type Module } from '../ui/dom';
@@ -54,6 +58,12 @@ export const projekt: Module = {
     const tOut = h('div', {});
     const tCard = card('Tilslutning og tracétavler (BN2-93)', tOut, 'pj-elcard');
     let visUaendrede = false;
+    const fOut = h('div', {});
+    const fCard = card('Forhindringer og bindinger', fOut, 'pj-elcard');
+    let fVis: string | null = null;
+    let fImport = false;
+    const nChip = (s: Niveau) => (s === 'obs' ? '<span class="chip chip-obs">Obs</span>' : chip(s));
+    const kmP = (s: string) => parseKm(s, 'm');
     const tilslutning = (): TilslutningInput | null => {
       const pr = p.data.projekteret?.elementer;
       if (!pr?.length) return null;
@@ -241,6 +251,7 @@ export const projekt: Module = {
       renderTilslutning(s);
       if (!d) {
         elCard.hidden = true;
+        renderForhindringer([]);
         out.innerHTML = `<div class="pj-tom"><h3>Ingen data endnu</h3><p>Upload en spordataliste eller geometrirapport i venstre side – eller tryk «Indlæs eksempel» for at se, hvordan hastighedsprofilen virker.</p></div>`;
         setReport(null);
         return;
@@ -254,7 +265,9 @@ export const projekt: Module = {
       const Vmin = Math.min(...a.map((x) => x.VtN));
       const nedsat = a.filter((x) => x.VtN < p.V);
       const laengdeNedsat = nedsat.reduce((sum, x) => sum + x.e.L, 0);
-      const fig = profilSvg(a, p.V, sam, valgt);
+      const fk = forhKontroller(d.elementer);
+      const fig = profilSvg(a, p.V, sam, valgt, fk);
+      renderForhindringer(fk);
       const tbl = tabelHtml(a, true);
 
       out.innerHTML = `
@@ -313,8 +326,90 @@ export const projekt: Module = {
         ],
         refs: ['SR87', 'ST16', 'EN13803'],
         figur: fig,
-        sider: [`<h2>Elementer og parametre</h2>${tabelHtml(a, false)}`, ...tilslutningSider],
+        sider: [`<h2>Elementer og parametre</h2>${tabelHtml(a, false)}`, ...(forhSide ? [forhSide] : []), ...tilslutningSider],
       });
+    };
+
+    /* ------------------------------ forhindringer ------------------------------ */
+    const forhKontroller = (el: Element[]): ForhKontrol[] => {
+      const tl = tilslutning();
+      const both = p.data.eksisterende && p.data.projekteret && tl;
+      return (p.forhindringer ?? []).map((f) => kontrollerForhindring(f, el, both ? { graenser: [tl.start, tl.slutProj], eks: p.data.eksisterende!.elementer, proj: p.data.projekteret!.elementer } : {}))
+        .sort((x, y) => x.f.km0 - y.f.km0);
+    };
+    let forhSide = '';
+    const renderForhindringer = (fk: ForhKontrol[]) => {
+      fOut.innerHTML = '';
+      const liste = h('div', {});
+      const antal = (s: Niveau) => fk.filter((x) => x.status === s).length;
+      liste.innerHTML = fk.length ? `
+        <div class="pj-tchips">${(['overskredet', 'undtagelse', 'obs', 'ok'] as Niveau[]).filter((s) => antal(s)).map((s) => `${nChip(s)} <small>${antal(s)}</small>`).join(' &nbsp; ')}</div>
+        <div class="pj-tbl"><table class="tbl pj-ft"><thead><tr><th>Type</th><th>Navn</th><th>Km fra – til</th><th>Geometri</th><th>Status</th><th></th></tr></thead><tbody>
+        ${fk.map((x) => `<tr data-f="${x.f.id}" class="${fVis === x.f.id ? 'pj-valgt' : ''}"><td><span class="pj-fdot pj-fdot-${x.f.type}"></span>${FORH_TEKST[x.f.type]}</td><td>${esc(x.f.navn)}${x.f.side ? ` <small>(${x.f.side})</small>` : ''}</td>
+          <td>${kmTekst(x.f.km0, 0)}${x.f.km1 !== x.f.km0 ? ` – ${kmTekst(x.f.km1, 0)}` : ''}</td><td><small>${esc(x.geometri)}</small></td><td>${nChip(x.status)}</td>
+          <td><button type="button" class="btn-ghost btn-xs" data-slet="${x.f.id}" title="Slet">✕</button></td></tr>
+          ${fVis === x.f.id ? `<tr class="pj-fdet"><td colspan="6"><table class="tbl"><thead><tr><th>Kontrol</th><th>Værdi</th><th>Grænse</th><th></th></tr></thead><tbody>${x.checks.map((cc) => `<tr><td>${esc(cc.label)}<br/><small>${esc(cc.kilde)}</small></td><td>${esc(cc.value)}</td><td>${esc(cc.graense)}</td><td>${nChip(cc.status)}</td></tr>`).join('') || '<tr><td colspan="4">Ingen kontroller for denne type – vises som markering i diagrammet.</td></tr>'}</tbody></table></td></tr>` : ''}`).join('')}
+        </tbody></table></div>
+        <p class="tip">Klik på en række for at se kontrollerne. «Obs» er opmærksomhedspunkter uden talkrav i de åbne kilder (bygværker, tunneler, bindinger) – de skal vurderes i projektet.</p>` : '<p class="tip pj-tip0">Ingen forhindringer endnu. Tilføj overkørsler, broer, tunneler, perroner, sporskifter og faste punkter – de vises i hastighedsdiagrammet og kontrolleres mod sporets geometri.</p>';
+      liste.querySelectorAll<HTMLTableRowElement>('tr[data-f]').forEach((tr) => tr.addEventListener('click', (ev) => {
+        const sl = (ev.target as HTMLElement).closest<HTMLElement>('[data-slet]');
+        if (sl) { p.forhindringer = (p.forhindringer ?? []).filter((x) => x.id !== sl.dataset.slet); gem(); update(); return; }
+        fVis = fVis === tr.dataset.f ? null : tr.dataset.f!; update();
+      }));
+      // Tilføj
+      const ny = { type: 'perron' as ForhType, fra: '', til: '', navn: '', side: '', ny: false, ballast: true };
+      const tSel = h('select', {});
+      for (const [k, t] of Object.entries(FORH_TEKST)) tSel.append(h('option', { value: k }, t));
+      tSel.addEventListener('change', () => { ny.type = tSel.value as ForhType; ekstra.hidden = !(ny.type === 'perron' || ny.type === 'bro'); ekstraTxt.textContent = ny.type === 'perron' ? 'Ny strækning (R ≥ 300 m)' : 'Gennemgående ballast'; });
+      const inp = (ph: string, k: 'fra' | 'til' | 'navn') => { const i = h('input', { type: 'text', placeholder: ph }); i.addEventListener('input', () => { ny[k] = i.value; }); return h('div', { class: 'ed-inp' }, i); };
+      const sSel = h('select', {});
+      for (const [k, t] of [['', 'Side –'], ['V', 'Venstre'], ['H', 'Højre'], ['begge', 'Begge']]) sSel.append(h('option', { value: k }, t));
+      sSel.addEventListener('change', () => { ny.side = sSel.value; });
+      const cb = h('input', { type: 'checkbox' });
+      cb.addEventListener('change', () => { ny.ny = cb.checked; ny.ballast = cb.checked; });
+      const ekstraTxt = h('span', {}, 'Ny strækning (R ≥ 300 m)');
+      const ekstra = h('label', { class: 'pj-cb' }, cb, ekstraTxt);
+      const add = h('button', { type: 'button', class: 'btn-primary btn-sm' }, 'Tilføj');
+      const fejl = h('small', { class: 'pj-adv' });
+      add.addEventListener('click', () => {
+        const k0 = kmP(ny.fra), k1 = ny.til.trim() ? kmP(ny.til) : k0;
+        if (!Number.isFinite(k0) || !Number.isFinite(k1)) { fejl.textContent = 'Angiv km som fx 12+345 eller 12345'; return; }
+        const f: Forhindring = { id: Math.random().toString(36).slice(2, 9), type: ny.type, km0: Math.min(k0, k1), km1: Math.max(k0, k1), navn: ny.navn || FORH_TEKST[ny.type], side: ny.side as Forhindring['side'], ...(ny.type === 'perron' ? { ny: ny.ny } : {}), ...(ny.type === 'bro' ? { ballast: cb.checked } : {}) };
+        p.forhindringer = [...(p.forhindringer ?? []), f]; gem(); update();
+      });
+      const form = h('div', { class: 'pj-fform' },
+        h('div', { class: 'inp inp-sel' }, tSel), inp('Km fra (12+345)', 'fra'), inp('Km til (tom = punkt)', 'til'), inp('Navn / beskrivelse', 'navn'),
+        h('div', { class: 'inp inp-sel' }, sSel), ekstra, add, fejl);
+      // Import
+      const imp = h('div', { class: 'pj-import' });
+      if (fImport) {
+        const ta = h('textarea', { rows: '6', class: 'pj-ta', placeholder: 'Type;Km fra;Km til;Navn;Side' });
+        ta.value = '';
+        const læs = h('button', { type: 'button', class: 'btn-primary btn-sm' }, 'Tilføj fra tekst');
+        const fe = h('div', {});
+        læs.addEventListener('click', () => {
+          const r = forhindringerFraTekst(ta.value, kmP);
+          if (r.liste.length) { p.forhindringer = [...(p.forhindringer ?? []), ...r.liste]; gem(); fImport = false; update(); }
+          fe.innerHTML = r.fejl.length ? `<div class="notice">${r.fejl.slice(0, 5).map(esc).join('<br/>')}</div>` : '';
+        });
+        const eks = h('button', { type: 'button', class: 'btn-ghost btn-sm' }, 'Indsæt eksempel');
+        eks.addEventListener('click', () => { ta.value = FORH_EKSEMPEL; });
+        imp.append(h('small', { class: 'tp-norm' }, 'Én forhindring pr. linje: type; km fra; km til; navn; side (V/H). Typer: perron, overkørsel, sporskifte, bro, tunnel, fast punkt.'), ta, h('div', { class: 'pj-knapper' }, læs, eks), fe);
+      }
+      const knapper = h('div', { class: 'pj-knapper' });
+      const bi = h('button', { type: 'button', class: 'btn-ghost btn-sm' }, fImport ? 'Luk import' : 'Importér liste (CSV/tekst)');
+      bi.addEventListener('click', () => { fImport = !fImport; update(); });
+      knapper.append(bi);
+      if ((p.forhindringer ?? []).length) {
+        const bs = h('button', { type: 'button', class: 'btn-ghost btn-sm' }, 'Slet alle');
+        bs.addEventListener('click', () => { if (confirm('Slet alle forhindringer i projektet?')) { p.forhindringer = []; gem(); update(); } });
+        knapper.append(bs);
+      }
+      fOut.append(liste, h('div', { class: 'ed-sec' }, 'Tilføj forhindring'), form, knapper, imp);
+      forhSide = fk.length ? `<h2>Forhindringer og bindinger</h2>
+        <table class="rpt-tbl"><thead><tr><th>Type</th><th>Navn</th><th>Km</th><th>Kontrol</th><th>Værdi</th><th>Grænse</th><th>Status</th></tr></thead><tbody>
+        ${fk.map((x) => (x.checks.length ? x.checks : [{ label: '–', value: '', graense: '', status: x.status, kilde: '' }]).map((cc, i) => `<tr>${i === 0 ? `<td rowspan="${Math.max(1, x.checks.length)}">${FORH_TEKST[x.f.type]}</td><td rowspan="${Math.max(1, x.checks.length)}">${esc(x.f.navn)}</td><td rowspan="${Math.max(1, x.checks.length)}">${kmTekst(x.f.km0, 0)}${x.f.km1 !== x.f.km0 ? `–${kmTekst(x.f.km1, 0)}` : ''}</td>` : ''}<td>${esc(cc.label)}${cc.kilde ? `<br/><small>${esc(cc.kilde)}</small>` : ''}</td><td>${esc(cc.value)}</td><td>${esc(cc.graense)}</td><td>${nChip(cc.status)}</td></tr>`).join('')).join('')}
+        </tbody></table>` : '';
     };
 
     /* ------------------------------ tilslutning og tracétavler ------------------------------ */
@@ -332,7 +427,8 @@ export const projekt: Module = {
         <thead><tr><th>Status</th><th>Km</th><th>Symbol</th><th>Rad</th><th>Okl</th><th>Kvl</th><th>Ovh</th><th>Rpl</th><th>Punkt</th></tr></thead>
         <tbody>${rk.map((r) => {
           const t = r.ny ?? r.gammel!;
-          return `<tr class="pj-tv-${r.status}"><td><span class="pj-tst pj-tst-${r.status}">${TAVLE_STATUS_TEKST[r.status]}</span>${(r.ny?.kant || r.gammel?.kant) ? ' <span class="pj-adv" title="Tavlen hører til et element, der er afskåret af datasættets start/slut – Kvl/Okl kan være ufuldstændig">⚠ kant</span>' : ''}</td>
+          const fi = (p.forhindringer ?? []).find((f) => (f.type === 'overkoersel' || f.type === 'sporskifte' || f.type === 'bro') && r.km >= f.km0 - 0.3 && r.km <= f.km1 + 0.3);
+          return `<tr class="pj-tv-${r.status}"><td><span class="pj-tst pj-tst-${r.status}">${TAVLE_STATUS_TEKST[r.status]}</span>${(r.ny?.kant || r.gammel?.kant) ? ' <span class="pj-adv" title="Tavlen hører til et element, der er afskåret af datasættets start/slut – Kvl/Okl kan være ufuldstændig">⚠ kant</span>' : ''}${fi && r.ny ? ` <span class="pj-adv" title="Tavlen falder i ${FORH_TEKST[fi.type].toLowerCase()} – kan ikke monteres i skinnekroppen her; flyt den til nærmeste mulige sted og angiv afstanden">⚠ ${FORH_TEKST[fi.type].toLowerCase()}</span>` : ''}</td>
             <td>${kmTekst(r.km, 1)}</td><td class="pj-sym">${tavleCelle(r, 'symbol')}</td><td>${tavleCelle(r, 'rad')}</td><td>${tavleCelle(r, 'okl')}</td><td>${tavleCelle(r, 'kvl')}</td><td>${tavleCelle(r, 'ovh')}</td><td>${tavleCelle(r, 'rpl')}</td><td><small>${esc(t.punkt)}</small></td></tr>`;
         }).join('')}</tbody>
       </table>`;
@@ -482,7 +578,7 @@ export const projekt: Module = {
     };
 
     renderLeft();
-    root.append(h('div', { class: 'grid' }, card('Projekt', left, 'card-input card-scroll'), card('Hastighedsprofil', out, 'card-out')), elCard, tCard);
+    root.append(h('div', { class: 'grid' }, card('Projekt', left, 'card-input card-scroll'), card('Hastighedsprofil', out, 'card-out')), fCard, elCard, tCard);
     update();
   },
 };

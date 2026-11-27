@@ -711,3 +711,30 @@ describe('Tilslutning og tracétavler', () => {
     expect(r.filter((x) => x.status === 'ny').length).toBeGreaterThanOrEqual(2);
   });
 });
+
+import { kontrollerForhindring, forhindringerFraTekst, FORH_EKSEMPEL } from '../src/core/forhindringer';
+
+describe('Forhindringer og bindinger', () => {
+  const t = parseTabel(EKSEMPEL_CSV);
+  const el = elementerFraTabel(t, { felter: gaetFelter(t.header), kmEnhed: 'auto', positiv: 'hoejre' }).elementer;
+  it('import af liste', () => {
+    const r = forhindringerFraTekst(FORH_EKSEMPEL, (s) => parseKm(s, 'm'));
+    expect(r.fejl).toEqual([]);
+    expect(r.liste.map((x) => x.type)).toEqual(['overkoersel', 'perron', 'bro', 'sporskifte', 'binding']);
+    expect(r.liste[1]).toMatchObject({ km0: 12600, km1: 12780, side: 'H' });
+  });
+  it('perron i kurve med h = 120 mm og ny strækning', () => {
+    const k = kontrollerForhindring({ id: 'a', type: 'perron', km0: 12600, km1: 12780, navn: 'P', ny: true }, el);
+    expect(k.checks[0].status).toBe('overskredet'); // 120 > 110
+    expect(k.checks[1].status).toBe('ok'); // R 800 ≥ 300
+    expect(k.status).toBe('overskredet');
+  });
+  it('sporskifte i overgangskurve og overkørsel på ret spor', () => {
+    const s = kontrollerForhindring({ id: 'b', type: 'sporskifte', km0: 12420, km1: 12470, navn: 'S' }, el);
+    expect(s.checks.find((c) => c.label === 'Placering')!.status).toBe('overskredet');
+    const o = kontrollerForhindring({ id: 'c', type: 'overkoersel', km0: 12180, km1: 12190, navn: 'O' }, el);
+    expect(o.checks[0].status).toBe('ok');
+    const g = kontrollerForhindring({ id: 'd', type: 'sporskifte', km0: 13700, km1: 13760, navn: 'S' }, el, { graenser: [13720] });
+    expect(g.checks.some((c) => c.label.startsWith('Tilslutningspunkt') && c.status === 'overskredet')).toBe(true);
+  });
+});

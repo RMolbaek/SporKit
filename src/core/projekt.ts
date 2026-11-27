@@ -12,6 +12,7 @@ import {
   type RuleSet, type Settings, type SporKlasse, type Status,
 } from './rules';
 import { cantConstant } from './formulas';
+import type { Forhindring } from './forhindringer';
 
 export type ElType = 'ret' | 'kurve' | 'overgang';
 
@@ -60,6 +61,8 @@ export interface Projekt {
   tilslutning?: { start: number; slutProj: number; slutEks: number };
   /** Sporklasse for fiktivt ryk (Sporregler 2.05.2–2.05.3) */
   klasse?: SporKlasse;
+  /** Forhindringer og bindinger langs sporet */
+  forhindringer?: Forhindring[];
   data: Partial<Record<DataType, Datasaet>>;
   noter: string;
 }

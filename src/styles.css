@@ -265,6 +265,26 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .pj-sym { font-weight: 700; font-family: var(--mono); }
 .pj-gl { text-decoration: line-through; color: var(--muted); }
 .pj-nyv { color: var(--warn); }
+.chip-obs { background: color-mix(in srgb, var(--brand-2) 14%, transparent); color: var(--brand-2); }
+.btn-xs { padding: 2px 8px; font-size: 12px; border-radius: 8px; }
+.pj-fform { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-items: center; margin: 8px 0; }
+.pj-fform .ed-inp input { font-size: 14px; font-weight: 500; }
+.pj-cb { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.pj-ft tbody tr[data-f] { cursor: pointer; }
+.pj-ft tbody tr[data-f]:hover { background: var(--surface-2); }
+.pj-ft td:nth-child(2), .pj-ft td:nth-child(4) { text-align: left !important; white-space: normal !important; }
+.pj-fdet > td { background: var(--surface-2); text-align: left !important; white-space: normal !important; }
+.pj-fdot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.pj-fdot-perron, .viz .hp-fb-perron { background: #2f855a; fill: #2f855a; }
+.pj-fdot-overkoersel, .viz .hp-fb-overkoersel { background: #d69e2e; fill: #d69e2e; }
+.pj-fdot-sporskifte, .viz .hp-fb-sporskifte { background: #805ad5; fill: #805ad5; }
+.pj-fdot-bro, .viz .hp-fb-bro { background: #3182ce; fill: #3182ce; }
+.pj-fdot-tunnel, .viz .hp-fb-tunnel { background: #4a5568; fill: #4a5568; }
+.pj-fdot-binding, .viz .hp-fb-binding { background: #e53e3e; fill: #e53e3e; }
+.pj-fdot-andet, .viz .hp-fb-andet { background: #a0aec0; fill: #a0aec0; }
+.viz .hp-f { fill: var(--text); opacity: .05; }
+.viz .hp-fst-overskredet { stroke: var(--bad); stroke-width: 2.5; }
+.viz .hp-fst-undtagelse { stroke: var(--warn); stroke-width: 2.5; }
 .pj-knapper { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .pj-felter { grid-template-columns: 1fr 1fr; margin: 10px 0; }
 .pj-felter input[type=text] { font-weight: 500; }

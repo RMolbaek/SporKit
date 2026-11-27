@@ -1,5 +1,6 @@
 /** Hastighedsprofil med krumnings- og overhøjdediagram. x = stationering [m]. */
 import type { ElementAnalyse } from '../core/projekt';
+import type { ForhKontrol } from '../core/forhindringer';
 import { fmt } from './dom';
 
 export const kmTekst = (m: number, d = 0) => {
@@ -11,14 +12,16 @@ export const kmTekst = (m: number, d = 0) => {
 
 let n = 0;
 
-export function profilSvg(a: ElementAnalyse[], V: number, sammenlign: ElementAnalyse[] | null, valgt: number | null): string {
+export function profilSvg(a: ElementAnalyse[], V: number, sammenlign: ElementAnalyse[] | null, valgt: number | null, forh: ForhKontrol[] = []): string {
   if (!a.length) return '';
   const u = `hp${n++}`;
   const W = 1000, padL = 56, padR = 14;
   const k0 = a[0].e.km0, k1 = a[a.length - 1].e.km1;
   const x = (m: number) => padL + ((m - k0) / Math.max(1, k1 - k0)) * (W - padL - padR);
   // bånd: hastighed, krumning, overhøjde
-  const bV = { y0: 24, y1: 214 }, bK = { y0: 246, y1: 330 }, bH = { y0: 356, y1: 430 }, H = 470;
+  const bV = { y0: 24, y1: 214 }, bK = { y0: 246, y1: 330 }, bH = { y0: 356, y1: 430 };
+  const bF = { y0: 470, y1: 500 };
+  const H = forh.length ? 540 : 470;
   const Vtop = Math.max(V, ...a.map((e) => (e.e.V ?? 0)), ...(sammenlign ?? []).map((e) => e.VtN)) * 1.1 || 100;
   const yV = (v: number) => bV.y1 - (Math.min(v, Vtop) / Vtop) * (bV.y1 - bV.y0);
   const kMax = Math.max(1e-6, ...a.map((e) => Math.max(Math.abs(e.e.R0 ? 1000 / e.e.R0 : 0), Math.abs(e.e.R1 ? 1000 / e.e.R1 : 0))));
@@ -38,6 +41,16 @@ export function profilSvg(a: ElementAnalyse[], V: number, sammenlign: ElementAna
   const krum = a.map((e) => `${x(e.e.km0).toFixed(1)},${yK(e.e.R0).toFixed(1)} ${x(e.e.km1).toFixed(1)},${yK(e.e.R1).toFixed(1)}`).join(' ');
   const oh = a.map((e) => `${x(e.e.km0).toFixed(1)},${yH(e.e.h0).toFixed(1)} ${x(e.e.km1).toFixed(1)},${yH(e.e.h1).toFixed(1)}`).join(' ');
   const skiltet = a.some((e) => e.e.V) ? trin((e) => e.e.V ?? NaN) : '';
+  // Forhindringer: bånd nederst og svag markering gennem alle diagrammer
+  const synlig = forh.filter((f) => f.f.km1 >= k0 - 1 && f.f.km0 <= k1 + 1);
+  const forhSvg = synlig.map((f, j) => {
+    const xa = x(Math.max(k0, f.f.km0)), xb = x(Math.min(k1, f.f.km1));
+    const w = Math.max(3, xb - xa);
+    const xm = (xa + xb) / 2;
+    return `<rect x="${xa}" y="${bV.y0}" width="${w}" height="${bH.y1 - bV.y0}" class="hp-f hp-f-${f.f.type}"/>
+      <rect x="${xa}" y="${bF.y0}" width="${w}" height="${bF.y1 - bF.y0}" rx="2" class="hp-fb hp-fb-${f.f.type} hp-fst-${f.status}"><title>${f.f.navn || f.f.type}</title></rect>
+      <text x="${xm}" y="${bF.y1 + 13 + (j % 2) * 12}" text-anchor="middle" class="hp-t">${(f.f.navn || f.f.type).slice(0, 22).replace(/[<&]/g, '')}</text>`;
+  }).join('');
   // km-akse
   const span = k1 - k0;
   const step = [50, 100, 200, 250, 500, 1000, 2000, 5000, 10000].find((s) => span / s <= 10) ?? 20000;
@@ -67,6 +80,8 @@ export function profilSvg(a: ElementAnalyse[], V: number, sammenlign: ElementAna
     <text x="${padL}" y="${bH.y0 - 8}" class="hp-t hp-b">Overhøjde h [mm] · maks. ${fmt(hMax)}</text>
     <line x1="${padL}" y1="${bH.y1}" x2="${W - padR}" y2="${bH.y1}" class="hp-akse"/>
     <polyline points="${oh}" class="hp-oh"/>
+    ${synlig.length ? `<text x="${padL}" y="${bF.y0 - 8}" class="hp-t hp-b">Forhindringer og bindinger</text><line x1="${padL}" y1="${(bF.y0 + bF.y1) / 2}" x2="${W - padR}" y2="${(bF.y0 + bF.y1) / 2}" class="hp-akse"/>` : ''}
+    ${forhSvg}
     <g class="hp-leg" transform="translate(${W - padR - 470} ${bV.y0 - 14})">
       <line x1="0" y1="-4" x2="22" y2="-4" class="hp-vn"/><text x="27" y="0" class="hp-t">Tilladt V (normal)</text>
       <line x1="140" y1="-4" x2="162" y2="-4" class="hp-vu"/><text x="167" y="0" class="hp-t">Undtagelse</text>
