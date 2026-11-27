@@ -560,3 +560,34 @@ describe('BN1-6-7 ensidigt fald på planum (enkeltspor)', () => {
     expect(faldTilladt('nyanlaeg', 'hoejre')).toBe(true);
   });
 });
+
+import { aMinOverjord, rendeKontrol, rendeGeometri, SKINNE_YDERKANT } from '../src/core/kabelrende';
+
+describe('BN1-13-4 kabelrende i tværprofil', () => {
+  const r = { a: 4.05, B: 0.4, H: 0.3, t: 0.1, bag: 0.3, placering: 'overjord' as const };
+  it('mindste afstand over jord', () => {
+    expect(aMinOverjord(160, 3.8)).toBeCloseTo(SKINNE_YDERKANT + 3.25, 9);
+    expect(aMinOverjord(100, 3.8)).toBe(3.8);
+    expect(aMinOverjord(100, 3.0)).toBeCloseTo(SKINNE_YDERKANT + 2.75, 9);
+  });
+  it('kontrol over jord og nedgravet', () => {
+    const ok = rendeKontrol({ r, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 0.5, sideTekst: 'h' });
+    expect(ok.every((c) => c.status === 'ok')).toBe(true);
+    const tæt = rendeKontrol({ r: { ...r, a: 3.9, t: 0.25 }, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 0.5, sideTekst: 'h' });
+    expect(tæt.filter((c) => c.status === 'overskredet').length).toBe(2);
+    const ned = rendeKontrol({ r: { ...r, a: 2.6, t: -0.5, placering: 'nedgravet' }, Pb: 3.8, V: 160, station: false, ballastfod: 3.0, dybdeSO: 1.2, sideTekst: 'h' });
+    expect(ned.find((c) => c.label.includes('laveste SO'))!.status).toBe('overskredet');
+    const ned2 = rendeKontrol({ r: { ...r, a: 4.0, t: -0.6, placering: 'nedgravet' }, Pb: 3.8, V: 160, station: true, ballastfod: 3.0, dybdeSO: 1.2, sideTekst: 'h' });
+    expect(ned2.find((c) => c.label.includes('dækning'))!.status).toBe('overskredet');
+  });
+  it('geometri og bredere planumskrone', () => {
+    const p = { Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1, fs: 4.5, kroneMin: { R: 4.75 } };
+    const g = geometri([{ h: 0, yder: 1 }], p, SVELLE_DATA.S99);
+    expect(g.crestR.x).toBeCloseTo(4.75, 9);
+    expect(g.edgeR.x).toBeCloseTo(3.8, 9);
+    expect(g.crestL.x).toBeCloseTo(-3.8, 9);
+    const rg = rendeGeometri(r, 1, 0, g.planum);
+    expect(rg.x1).toBeCloseTo(4.05, 9);
+    expect(rg.top).toBeCloseTo(g.planum(4.25) - 0.1, 9);
+  });
+});

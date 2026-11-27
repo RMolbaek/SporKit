@@ -138,6 +138,8 @@ export interface Parametre {
   PbYder?: number;
   /** Planumsform ved enkeltspor: 'tag' = knæk under spormidte, 'hoejre'/'venstre' = ensidigt fald mod den side. Dobbeltspor: altid knæk midt mellem sporene. */
   fald?: Fald;
+  /** Mindste afstand fra yderste spormidte til planumskronens kant pr. side [m] (banket til f.eks. kabelrende) */
+  kroneMin?: { L?: number; R?: number };
   hSkulder: number;
   /** Baneskråningens anlæg og dæmningshøjde under planumskant [m] */
   as: number; daemning: number;
@@ -168,6 +170,8 @@ export interface Geometri {
   apexX: number;
   toeL: P; toeR: P;
   edgeL: P; edgeR: P;
+  /** Planumskronens kant (= planumskant, eller længere ude ved banket) */
+  crestL: P; crestR: P;
   footL: P; footR: P;
   mellem?: P[];
   /** Ballast-polygon (uden sveller) og underballast-polygon */
@@ -247,6 +251,9 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   const PbL = p.Pb + (yderL ? p.PbYder ?? 0 : 0), PbR = p.Pb + (yderR ? p.PbYder ?? 0 : 0);
   const edgeL = { x: first.cx - PbL, y: planum(first.cx - PbL) };
   const edgeR = { x: last.cx + PbR, y: planum(last.cx + PbR) };
+  const kL = Math.max(PbL, p.kroneMin?.L ?? 0), kR = Math.max(PbR, p.kroneMin?.R ?? 0);
+  const crestL = { x: first.cx - kL, y: planum(first.cx - kL) };
+  const crestR = { x: last.cx + kR, y: planum(last.cx + kR) };
   // Mellem sporene: V-formet ballast mellem skuldrene
   let mellem: P[] | undefined;
   if (out.length === 2) {
@@ -274,14 +281,14 @@ export function geometri(spor: SporInput[], p: Parametre, sv: Svelle): Geometri 
   const ballast = [...top, { x: toeR.x, y: planum(toeR.x) }, { x: apexX, y: apexY }, { x: toeL.x, y: planum(toeL.x) }];
   // Underballast mellem planum og råjordsplanum, afsluttet af baneskråningen
   const sl = p.as;
-  const rjL = { x: edgeL.x - sl * (raajord(edgeL.x) - edgeL.y), y: 0 }; rjL.y = raajord(rjL.x);
-  const rjR = { x: edgeR.x + sl * (raajord(edgeR.x) - edgeR.y), y: 0 }; rjR.y = raajord(rjR.x);
-  const underballast = [edgeL, { x: apexX, y: apexY }, edgeR, rjR, { x: apexX, y: apexY + p.Ut }, rjL];
-  const footL = { x: edgeL.x - sl * p.daemning, y: edgeL.y + p.daemning };
-  const footR = { x: edgeR.x + sl * p.daemning, y: edgeR.y + p.daemning };
+  const rjL = { x: crestL.x - sl * (raajord(crestL.x) - crestL.y), y: 0 }; rjL.y = raajord(rjL.x);
+  const rjR = { x: crestR.x + sl * (raajord(crestR.x) - crestR.y), y: 0 }; rjR.y = raajord(rjR.x);
+  const underballast = [crestL, { x: apexX, y: apexY }, crestR, rjR, { x: apexX, y: apexY + p.Ut }, rjL];
+  const footL = { x: crestL.x - sl * p.daemning, y: crestL.y + p.daemning };
+  const footR = { x: crestR.x + sl * p.daemning, y: crestR.y + p.daemning };
   const daemning = [rjL, { x: apexX, y: apexY + p.Ut }, rjR, footR, footL];
   return {
-    spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, footL, footR, mellem,
+    spor: out, planum, raajord, apexX, toeL, toeR, edgeL, edgeR, crestL, crestR, footL, footR, mellem,
     ballast, underballast, daemning, pbbL: toeL.x - edgeL.x, pbbR: edgeR.x - toeR.x, PbL, PbR, fald,
   };
 }

@@ -4,17 +4,21 @@ import {
 import { tsiTrackCentres } from '../core/tsi';
 import { setReport } from '../core/report';
 import type { Status } from '../core/rules';
-import { tvaerprofilSvg } from '../ui/tvaerprofil';
+import { tvaerprofilSvg, type RendeTegning } from '../ui/tvaerprofil';
+import { rendeGeometri, rendeKontrol, aMinOverjord, RENDE_NOTER, SKINNE_YDERKANT, type RendeParam, type RendePlacering } from '../core/kabelrende';
 import { card, chip, fmt, h, loadState, saveState, select, type Module } from '../ui/dom';
 
 interface State extends Parametre {
   V: number; A: number; L: number; R: number;
   h1: number; h2: number;
+  /** Kabelrende (BN1-13-4) */
+  rA: number; rB: number; rH: number; rT: number; rBag: number;
 }
-type Opt = { fald: string; projekt: string; sidespor: string; svelle: string; antal: string; ls60: string; yder1: string; yder2: string; auto: string };
+type Opt = { rende: string; rPlac: string; omraade: string; fald: string; projekt: string; sidespor: string; svelle: string; antal: string; ls60: string; yder1: string; yder2: string; auto: string };
 
 const DEF: State = {
   V: 160, A: 22.5, L: 2500, R: 0, h1: 0, h2: 0,
+  rA: 4.1, rB: 0.40, rH: 0.30, rT: 0.10, rBag: 0.30,
   Bsk: 0.4, a: 1.5, Bt: 0.3, Ut: 0.25, Pb: 3.8, PbYder: 0, Xp: 40, Xrp: 40, hSkulder: 0, as: 1.5, daemning: 1.0, fs: 4.5,
 };
 
@@ -38,7 +42,7 @@ export const tvaerprofil: Module = {
   beskrivelse: 'Sammensæt et tværprofil for ballasteret spor – ét eller to spor, med overhøjde – og kontrollér det mod BN1-6-7.',
   render(root) {
     const st = loadState<State>('tvaerprofil', DEF);
-    const opt = loadState<Opt>('tvaerprofil-opt', { fald: 'hoejre', projekt: 'nyanlaeg', sidespor: 'nej', svelle: 'S99', antal: '2', ls60: 'ja', yder1: '1', yder2: '1', auto: 'ja' });
+    const opt = loadState<Opt>('tvaerprofil-opt', { rende: 'ingen', rPlac: 'overjord', omraade: 'fri', fald: 'hoejre', projekt: 'nyanlaeg', sidespor: 'nej', svelle: 'S99', antal: '2', ls60: 'ja', yder1: '1', yder2: '1', auto: 'ja' });
     const out = h('div', { class: 'out' });
     const left = h('div', {});
     const paramInputs = new Map<keyof Parametre, { inp: HTMLInputElement; norm: HTMLElement | null; unit: string }>();
@@ -72,15 +76,29 @@ export const tvaerprofil: Module = {
       if (opt.antal === '2') spor.push({ h: st.h2, yder: opt.yder2 === '1' ? 1 : -1 });
       const fald: Fald = opt.antal === '1' ? (opt.fald as Fald) : 'tag';
       st.fald = fald;
+      // Kabelrender: planumskronen gøres bred nok til renden + fri bredde bag den
+      const rp: RendeParam = { a: st.rA, B: st.rB, H: st.rH, t: st.rT, bag: st.rBag, placering: opt.rPlac as RendePlacering };
+      const rSider: (-1 | 1)[] = opt.rende === 'begge' ? [-1, 1] : opt.rende === 'venstre' ? [-1] : opt.rende === 'hoejre' ? [1] : [];
+      const kroneB = st.rA + st.rB + st.rBag;
+      st.kroneMin = { L: rSider.includes(-1) ? kroneB : 0, R: rSider.includes(1) ? kroneB : 0 };
       const g = geometri(spor, st, sv);
       // Overhøjdens effekt: samme profil uden overhøjde til sammenligning
       const g0 = geometri(spor.map((s) => ({ ...s, h: 0 })), st, sv);
       const dFodL = g0.toeL.x - g.toeL.x, dFodR = g.toeR.x - g0.toeR.x;
       const harH = spor.some((s) => s.h > 0);
-      const fig = tvaerprofilSvg(g, st, spor, sv, k.saenket);
+      const render: (RendeTegning & { kontrol: ReturnType<typeof rendeKontrol> })[] = rSider.map((side) => {
+        const t = side === -1 ? g.spor[0] : g.spor[g.spor.length - 1];
+        const rg = rendeGeometri(rp, side, t.cx, g.planum);
+        const kontrol = rendeKontrol({
+          r: rp, Pb: side === -1 ? g.PbL : g.PbR, V: st.V, station: opt.omraade === 'station',
+          ballastfod: side === -1 ? t.cx - g.toeL.x : g.toeR.x - t.cx, dybdeSO: rg.top, sideTekst: side === -1 ? 'venstre' : 'højre',
+        });
+        return { ...rg, cx: t.cx, a: st.rA, side, kontrol };
+      });
+      const fig = tvaerprofilSvg(g, st, spor, sv, k.saenket, render);
 
       // Kontrol
-      const rows: { label: string; value: string; graense: string; status: Status }[] = [];
+      const rows: { label: string; value: string; graense: string; status: Status; kilde?: string }[] = [];
       const chk = (label: string, v: number, min: number, unit: string, d = 2) =>
         rows.push({ label, value: `${fmt(v, d)} ${unit}`, graense: `≥ ${fmt(min, d)} ${unit}`, status: v >= min - 1e-6 ? 'ok' : 'overskredet' });
       chk('Ballastskulderens bredde Bsk', st.Bsk, k.Bsk, 'm');
@@ -120,6 +138,8 @@ export const tvaerprofil: Module = {
           ? 'Nyanlægstabellen (fig. 15.1-3) har intet Pb-tillæg for overhøjde – overhøjdens effekt kontrolleres i stedet ved, at ballastfoden ligger inden for planum (Pbb ≥ 0).'
           : '200 < V ≤ 250 km/t: Pb = 3,80 m uden fodnote 4-tillæg – overhøjdens effekt kontrolleres ved Pbb ≥ 0.');
       }
+      for (const r of render) rows.push(...r.kontrol);
+      if (render.length) noter.push(...RENDE_NOTER);
       const total: Status = rows.some((r) => r.status === 'overskredet') ? 'overskredet' : 'ok';
 
       // Mængder pr. m spor
@@ -145,6 +165,7 @@ export const tvaerprofil: Module = {
               <tr><td>Ballast (ekskl. sveller)</td><td>${fmt(aBallast, 2)} m³/m</td></tr>
               <tr><td>Underballast</td><td>${fmt(aUb, 2)} m³/m</td></tr>
               <tr><td>Planumsbredde i alt</td><td>${fmt(bredde, 2)} m</td></tr>
+              ${render.length ? `<tr><td>Kronebredde i alt (inkl. banket til kabelrende)</td><td>${fmt(g.crestR.x - g.crestL.x, 2)} m</td></tr>` : ''}
               ${g.spor.map((t, i) => `<tr><td>Bt spor ${i + 1} (venstre / højre streng)</td><td>${fmt(t.btVenstre, 3)} / ${fmt(t.btHoejre, 3)} m</td></tr>`).join('')}
               <tr><td>Planumsbanket Pbb (v / h)</td><td>${fmt(g.pbbL, 2)} / ${fmt(g.pbbR, 2)} m</td></tr>
               ${harH ? `<tr><td>Overhøjdens flytning af ballastfoden (v / h)</td><td>${dFodL >= 0 ? '+' : ''}${fmt(dFodL * 1000)} / ${dFodR >= 0 ? '+' : ''}${fmt(dFodR * 1000)} mm</td></tr>` : ''}
@@ -165,6 +186,7 @@ export const tvaerprofil: Module = {
           { label: 'Kurveradius', symbol: 'R', value: st.R > 0 ? fmt(st.R) : 'ret spor', unit: 'm' },
           { label: 'Bsk / a / Bt / Ut / Pb / Pb-tillæg yderside', symbol: '', value: `${fmt(st.Bsk, 2)} / ${fmt(st.a, 1)} / ${fmt(st.Bt, 2)} / ${fmt(st.Ut, 2)} / ${fmt(st.Pb, 2)} / ${fmt(st.PbYder ?? 0, 2)}`, unit: 'm' },
           { label: 'Xp / Xrp', symbol: '', value: `${st.Xp} / ${st.Xrp}`, unit: '‰' },
+          ...(render.length ? [{ label: 'Kabelrende (BN1-13-4)', symbol: 'a / B×H / t', value: `${opt.rende === 'begge' ? 'begge sider' : opt.rende}, ${opt.rPlac === 'overjord' ? 'over jord' : 'nedgravet'}: ${fmt(st.rA, 2)} m / ${fmt(st.rB, 2)}×${fmt(st.rH, 2)} m / ${fmt(st.rT, 2)} m`, unit: '' }] : []),
           { label: 'Planumsform', symbol: '', value: opt.antal === '1' ? FALD_TEKST[fald] : 'Knæk midt mellem sporene', unit: '' },
           ...(opt.antal === '2' ? [{ label: 'Sporafstand', symbol: 'fs', value: fmt(st.fs, 2), unit: 'm' }] : []),
         ],
@@ -174,12 +196,13 @@ export const tvaerprofil: Module = {
           { label: 'Planumsbredde', formel: 'Pb (+ tillæg i kurvens yderside, fodnote 4)', indsat: `${fmt(st.Pb, 2)} + ${fmt(st.PbYder ?? 0, 2)}`, resultat: `v ${fmt(g.PbL, 2)} / h ${fmt(g.PbR, 2)} m` },
           { label: 'Ballastfod', formel: 'skråning 1:a fra skulderkant til planum', indsat: '', resultat: `Pbb ${fmt(g.pbbL, 2)} / ${fmt(g.pbbR, 2)} m` },
           ...(harH ? [{ label: 'Overhøjdens effekt på ballastfod', formel: 'fod(h) − fod(h = 0)', indsat: 'rotation om inderskinnen', resultat: `v ${fmt(dFodL * 1000)} / h ${fmt(dFodR * 1000)} mm` }] : []),
+          ...render.map((r) => ({ label: `Kabelrende ${r.side === -1 ? 'venstre' : 'højre'}`, formel: 'a − (½·1435 + 72 mm) = afstand til nærmeste skinne', indsat: `${fmt(st.rA, 2)} − ${fmt(SKINNE_YDERKANT, 3)}`, resultat: `${fmt(st.rA - SKINNE_YDERKANT, 2)} m · top ${fmt(r.top, 2)} m under laveste SO` })),
           { label: 'Ballastmængde', formel: 'tværsnitsareal − svelleandel', indsat: '', resultat: `${fmt(aBallast, 2)} m³/m` },
           { label: 'Underballastmængde', formel: 'tværsnitsareal', indsat: '', resultat: `${fmt(aUb, 2)} m³/m` },
         ],
-        checks: rows.map((r) => ({ ...r, kilde: 'BN1-6-7' })),
+        checks: rows.map((r) => ({ ...r, kilde: r.kilde ?? 'BN1-6-7' })),
         noter,
-        refs: ['BN1-6', 'BN1-154', 'BN1-38', 'TSI-INF'],
+        refs: ['BN1-6', ...(render.length ? ['BN1-13'] : []), 'BN1-154', 'BN1-38', 'TSI-INF'],
         figur: fig,
       });
     };
@@ -235,7 +258,31 @@ export const tvaerprofil: Module = {
       );
       const reset = h('button', { class: 'btn-ghost btn-sm', type: 'button' }, 'Sæt parametre til normkrav');
       reset.addEventListener('click', () => { brugNorm(); renderLeft(); update(); });
-      left.append(sel, h('div', { class: 'ed-sec' }, 'Spor'), g1, yder, h('div', { class: 'ed-sec' }, 'Tværprofilets parametre'), g2, h('div', { class: 'ed-add' }, reset));
+      // Kabelrende (BN1-13-4)
+      const rSel = h('div', { class: 'fields' },
+        select('Kabelrende', 'rende', [['ingen', 'Ingen'], ['hoejre', 'Højre side'], ['venstre', 'Venstre side'], ['begge', 'Begge sider']], opt, () => { renderLeft(); update(); }),
+        ...(opt.rende !== 'ingen' ? [
+          select('Placering', 'rPlac', [['overjord', 'Over jord (på terræn, ≤ 0,20 m over)'], ['nedgravet', 'Nedgravet']], opt, () => { st.rT = opt.rPlac === 'overjord' ? 0.10 : -0.50; renderLeft(); update(); }),
+          select('Område', 'omraade', [['fri', 'Fri strækning'], ['station', 'Stationsområde']], opt, update),
+        ] : []),
+      );
+      const rFelter = opt.rende === 'ingen' ? [] : [h('div', { class: 'ed-fields' },
+        felt('a fra spormidte', st.rA, 0.05, 'm', (v) => { st.rA = v; update(); }, opt.rPlac === 'overjord' ? `min. ${fmt(aMinOverjord(st.V, Math.max(st.Pb + (st.PbYder ?? 0))), 2)} m` : 'min. 2,50 m'),
+        felt('Bredde B', st.rB, 0.05, 'm', (v) => { st.rB = v; update(); }),
+        felt('Højde H', st.rH, 0.05, 'm', (v) => { st.rH = v; update(); }),
+        felt(opt.rPlac === 'overjord' ? 'Top over terræn' : 'Top over terræn (−)', st.rT, 0.05, 'm', (v) => { st.rT = v; update(); }, opt.rPlac === 'overjord' ? '0 – 0,20 m' : 'negativ = dækning'),
+        felt('Fri bredde bag renden', st.rBag, 0.05, 'm', (v) => { st.rBag = v; update(); }),
+      )];
+      const rMin = h('button', { class: 'btn-ghost btn-sm', type: 'button' }, 'Placér renden så tæt på sporet som tilladt');
+      rMin.addEventListener('click', () => {
+        const g0 = geometri([{ h: st.h1, yder: opt.yder1 === '1' ? 1 : -1 }], { ...st, kroneMin: {} }, { L: st.L, H: SVELLE_DATA[opt.svelle as Svelletype].H });
+        const pb = Math.max(g0.PbL, g0.PbR, opt.antal === '2' ? st.Pb + (st.PbYder ?? 0) : 0);
+        st.rA = opt.rPlac === 'overjord' ? Math.ceil((aMinOverjord(st.V, pb) - 1e-9) * 20) / 20 : 2.5;
+        if (opt.rPlac === 'overjord') st.rT = Math.min(Math.max(st.rT, 0), 0.2);
+        renderLeft(); update();
+      });
+      left.append(sel, h('div', { class: 'ed-sec' }, 'Spor'), g1, yder, h('div', { class: 'ed-sec' }, 'Tværprofilets parametre'), g2, h('div', { class: 'ed-add' }, reset),
+        h('div', { class: 'ed-sec' }, 'Kabelrende (BN1-13-4)'), rSel, ...rFelter, ...(opt.rende !== 'ingen' ? [h('div', { class: 'ed-add' }, rMin)] : []));
     };
 
     if (opt.auto === 'ja') brugNorm();

@@ -5,7 +5,11 @@ import { fmt } from './dom';
 
 let n = 0;
 
-export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv: Svelle, saenket: boolean): string {
+export interface RendeTegning {
+  cx: number; xi: number; x1: number; x2: number; top: number; bund: number; terr: number; a: number; side: -1 | 1;
+}
+
+export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv: Svelle, saenket: boolean, render: RendeTegning[] = []): string {
   const u = `tp${n++}`;
   const M = (v: number) => v * 1000;
   const pt = (q: { x: number; y: number }) => `${M(q.x).toFixed(1)},${M(q.y).toFixed(1)}`;
@@ -14,7 +18,7 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
   const ytop = -Math.max(900, 6.5 * T);
   const ybot0 = M(Math.max(g.footL.y, g.footR.y));
   const groundY = ybot0;
-  const ybot = ybot0 + 2.6 * Math.max(110, (M(g.footR.x) - M(g.footL.x) + 600) / 55);
+  const ybot = ybot0 + (render.length ? 4.5 : 2.6) * Math.max(110, (M(g.footR.x) - M(g.footL.x) + 600) / 55);
 
   const dimH = (x1: number, x2: number, y: number, label: string, above = true) => `
     <g class="t-dim"><line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" marker-start="url(#a-${u})" marker-end="url(#a-${u})"/>
@@ -56,6 +60,23 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
   const yDimPb = groundY + 0.9 * T;
   const pbDims = `${dimH(M(g.edgeL.x), M(first.cx), yDimPb, `Pb ${fmt(g.PbL, 2)}`, false)}${dimH(M(last.cx), M(g.edgeR.x), yDimPb, `Pb ${fmt(g.PbR, 2)}`, false)}`;
   const fsDim = g.spor.length === 2 ? dimH(M(first.cx), M(last.cx), -5 * T, `fs ${fmt(p.fs, 2)}`) : '';
+  // Kabelrender (BN1-13-4): betonrende med låg og kabler, mål fra spormidte til nærmeste flade
+  const rendeSvg = render.map((r) => {
+    const w = M(r.x2 - r.x1), hgt = M(r.bund - r.top), wall = Math.min(60, w * 0.15);
+    const x = M(r.x1), y = M(r.top);
+    const kabler = [0.3, 0.5, 0.7].map((f, j) => `<circle cx="${x + w * f}" cy="${y + hgt - wall - 45 - (j % 2) * 30}" r="${Math.min(38, w * 0.09)}" class="tp-kabel"/>`).join('');
+    const yd = groundY + 2.7 * T; // under Pb-målene, så målene ikke krydser ballasten
+    return `<g>
+      <path d="M ${x},${y + 30} L ${x},${y + hgt} L ${x + w},${y + hgt} L ${x + w},${y + 30} L ${x + w - wall},${y + 30} L ${x + w - wall},${y + hgt - wall} L ${x + wall},${y + hgt - wall} L ${x + wall},${y + 30} Z" class="tp-rende"/>
+      <rect x="${x - 10}" y="${y}" width="${w + 20}" height="30" class="tp-laag"/>
+      ${kabler}
+      ${dimH(M(r.cx), M(r.xi), yd, `a ${fmt(r.a, 2)}`, false)}
+      <line x1="${M(r.xi)}" y1="${M(r.bund)}" x2="${M(r.xi)}" y2="${yd}" class="tp-hjlp"/>
+      <text x="${x + w / 2}" y="${y - 0.45 * T}" text-anchor="middle" font-size="${T * 0.8}" class="t-txt">Kabelrende</text>
+    </g>`;
+  }).join('');
+  const pbKant = [g.edgeL, g.edgeR].filter((e, i) => Math.abs(e.x - (i ? g.crestR.x : g.crestL.x)) > 1e-6)
+    .map((e) => `<line x1="${M(e.x)}" y1="${M(e.y) - 160}" x2="${M(e.x)}" y2="${M(e.y) + 160}" class="tp-pbkant"/>`).join('');
   const xUt = g.edgeL.x + 0.35;
   const utDim = dimV(M(xUt), M(g.planum(xUt)), M(g.raajord(xUt)), `Ut ${fmt(p.Ut, 2)}`);
 
@@ -72,10 +93,11 @@ export function tvaerprofilSvg(g: Geometri, p: Parametre, spor: SporInput[], sv:
     <polygon points="${g.underballast.map(pt).join(' ')}" fill="url(#u-${u})" class="t-layer"/>
     <polygon points="${g.ballast.map(pt).join(' ')}" fill="url(#b-${u})" class="t-layer"/>
     ${sporSvg}
+    ${pbKant}${rendeSvg}
     ${btDims}${utDim}${pbDims}${fsDim}
     <circle cx="${M(g.toeL.x)}" cy="${M(g.toeL.y)}" r="22" class="t-pivot"/><circle cx="${M(g.toeR.x)}" cy="${M(g.toeR.y)}" r="22" class="t-pivot"/>
     <text x="${(M(g.toeL.x) + M(first.shL.x)) / 2 - 80}" y="${(M(g.toeL.y) + M(first.shL.y)) / 2}" text-anchor="end" font-size="${T}" class="t-txt">1:${fmt(p.a, 1)}</text>
-    <text x="${(M(g.edgeR.x) + M(g.footR.x)) / 2 + 80}" y="${(M(g.edgeR.y) + M(g.footR.y)) / 2}" font-size="${T}" class="t-txt">1:${fmt(p.as, 1)}</text>
+    <text x="${(M(g.crestR.x) + M(g.footR.x)) / 2 + 80}" y="${(M(g.crestR.y) + M(g.footR.y)) / 2}" font-size="${T}" class="t-txt">1:${fmt(p.as, 1)}</text>
     <text x="${M(g.edgeR.x)}" y="${M(g.raajord(g.edgeR.x)) + 1.6 * T}" text-anchor="end" font-size="${T * 0.9}" class="t-txt tp-lys">Planum / råjordsplanum ${fmt(p.Xp)} / ${fmt(p.Xrp)} ‰${g.fald === 'hoejre' ? ' →' : g.fald === 'venstre' ? ' ←' : ''}</text>
     <text x="${M(g.toeR.x) + 40}" y="${M(g.toeR.y) - 0.4 * T}" font-size="${T * 0.85}" class="t-txt t-muted">Pbb ${fmt(g.pbbR, 2)}</text>
     <text x="${M(g.toeL.x) - 40}" y="${M(g.toeL.y) - 0.4 * T}" text-anchor="end" font-size="${T * 0.85}" class="t-txt t-muted">Pbb ${fmt(g.pbbL, 2)}</text>
