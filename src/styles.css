@@ -368,13 +368,17 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--brand-2);
 .viz-oz { max-width: 100%; }
 .viz .oz-ballast { fill: #a7a294; }
 .viz .oz-ub { fill: #d9c9a3; }
-.viz .oz-trekant { fill: #e8d9a8; stroke: var(--accent); stroke-width: 1.5; }
+.viz .oz-trekant { fill: #efe2bd; stroke: var(--accent); stroke-width: 1.5; }
+.viz .oz-draen { fill: none; stroke: #4f4a43; stroke-width: 1.5; }
 .viz .oz-hb { fill: color-mix(in srgb, var(--brand-2) 30%, transparent); stroke: var(--brand-2); stroke-width: 1; }
 .viz .oz-bro { fill: #9aa3aa; stroke: #5d666d; stroke-width: 1; }
 .viz .oz-raajord { fill: #8a6f52; }
 .viz .oz-skinne { stroke: #4f5961; stroke-width: 3; }
 .viz .oz-svelle { fill: #b9bec2; stroke: #6f777e; stroke-width: .6; }
-.viz .oz-ny { fill: #c9c4b5; }
+.viz .oz-ny { fill: #c4bfae; }
+.viz .oz-nyub { fill: #efe2bd; }
+.viz .oz-eks { stroke: #4f4a43; stroke-width: 1; stroke-dasharray: 6 4; }
+.viz .oz-trappe { fill: none; stroke: var(--text); stroke-width: 3; stroke-linejoin: round; }
 .viz .oz-ex { fill: #d9c9a3; opacity: .9; }
 .viz .oz-graense { fill: none; stroke: var(--bad); stroke-width: 2; }
 .viz .oz-svejs { stroke: var(--accent); stroke-width: 2.5; }

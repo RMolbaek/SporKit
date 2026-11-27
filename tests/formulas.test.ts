@@ -405,12 +405,20 @@ describe('BN1-6-7 overgangszoner', () => {
     expect(underfoering({ projekt: 'fornyelse', V: 160, hyppige: true, geonet: false, saetningsplade: 12, sidespor: false }).type).toBe('ingen');
     expect(ev2Krav(180)).toBe(115);
   });
-  it('nyt/eksisterende bærelag', () => {
-    const b = baerelag({ dybde: 0.3, laengdeFornyelse: 200, sidespor: false, projekt: 'fornyelse' });
-    expect([b.kraeves, b.trin, b.Ltrin]).toEqual([true, 2, 6]);
-    expect(b.haeldningJaevn).toBeCloseTo(15, 6);
-    expect(baerelag({ dybde: 0.3, laengdeFornyelse: 8, sidespor: false, projekt: 'fornyelse' }).kraeves).toBe(false);
-    expect(baerelag({ dybde: 0.3, laengdeFornyelse: 200, sidespor: true, projekt: 'fornyelse' }).kraeves).toBe(false);
+  it('nyt/eksisterende bærelag – trappe efter fig. 12.1-2', () => {
+    const base = { BtEks: 0.3, BtNy: 0.3, UtNy: 0.25, L1: 3, L2: 3, aSvejs: 1.5, laengdeFornyelse: 200, sidespor: false, projekt: 'fornyelse' as const };
+    const b = baerelag(base);
+    expect(b.kraeves).toBe(true);
+    expect(b.P2).toBeCloseTo(0.3, 9); // eksisterende planum
+    expect(b.P1).toBeCloseTo(0.15, 9); // 0,15 m over
+    expect(b.D).toBeCloseTo(0.55, 9);
+    expect(b.Ltrin).toBe(6);
+    expect(b.checks.every((c) => c.status === 'ok')).toBe(true);
+    expect(b.haeldningJaevn).toBeCloseTo(27.5, 6);
+    const kort = baerelag({ ...base, L1: 2.5, aSvejs: 1.0 });
+    expect(kort.checks.filter((c) => c.status === 'overskredet').length).toBe(2);
+    expect(baerelag({ ...base, laengdeFornyelse: 8 }).kraeves).toBe(false);
+    expect(baerelag({ ...base, sidespor: true }).kraeves).toBe(false);
   });
 });
 
