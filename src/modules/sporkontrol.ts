@@ -67,7 +67,7 @@ export const sporkontrol: Module = {
         ${st.p > 0 ? `<h3>Radius fra målevognsdiagram</h3>${results([{ symbol: 'R', label: `Pilhøjde p = ${fmt(st.p, 1)} mm på diagrammet`, value: fmt(Rdiag), unit: 'm', sub: 'R = 10 000 / p (BN1-38 afsnit 17)' }])}` : ''}
         <h3>Sporvidde</h3>
         ${results([
-          { symbol: 'G<sub>proj</sub>', label: `Projekteret sporvidde ved R = ${fmt(st.R)} m`, value: fmt(Gproj), unit: 'mm', sub: udv ? `1435 + sporudvidelse ${udv} mm (Sporregler 2.12)` : `ingen sporudvidelse (R ≥ 190 m)${set.sporvidde === 1437 ? ' · TEN: 1437 mm' : ''}` },{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
+          { symbol: 'G<sub>proj</sub>', label: `Projekteret sporvidde ved R = ${fmt(st.R)} m`, value: fmt(Gproj), unit: 'mm', sub: udv ? `1435 + sporudvidelse ${udv} mm (Sporregler 2.12)` : `ingen sporudvidelse (R ≥ 190 m)${set.sporvidde === 1437 ? ' · projekteret 1437 mm (Sporregler 2.12.1)' : ''}` },{ symbol: 'G', label: `TSI tabel 12 ved V = ${st.Vs} km/t`, value: `${fmt(ial.min)} – ${fmt(ial.max)}`, unit: 'mm', sub: 'enkeltfejl, målt 14 mm under SO' }])}
         ${tsiBlock(tsiRows)}
         <p class="tip">Målebaser iht. BN1-38: 1½ eller 2, 2½ eller 3, 6, 9, 12 og 15 m. Grænseværdier for vridning afhænger af fejlklasse og findes i BN1-38. Eksempel fra Sporteknik: h₁ = 55, h₂ = 40, b = 3 m → 5 mm/m.</p>
       `;

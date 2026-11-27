@@ -2,14 +2,14 @@
  * Grundlæggende sporgeometriske formler.
  * Enheder: V [km/t], R [m], h/I/E [mm], L [m].
  */
-import { limitDhdt, limitDIdt, MIN_OVERGANGSKURVE, type RuleSet } from './rules';
+import { hMaxAfsporing, limitDhdt, limitDIdt, MIN_OVERGANGSKURVE, type RuleSet } from './rules';
 
 /**
  * Konstanten C i h_eq = C·V²/R  [mm·m·t²/km²].
- * C = e / (g · 3,6²), hvor e = kontaktafstand [mm]. For e = 1500 mm: C ≈ 11,8.
+ * C = e / (g · 3,6²) ≈ 11,798 for e = 1500 mm; Sporreglerne bruger 11,8 i formel (1)–(14), og det gør SporKit også.
  */
 export function cantConstant(rs: RuleSet): number {
-  return rs.kontaktafstand / (rs.g * 3.6 * 3.6);
+  return rs.C ?? rs.kontaktafstand / (rs.g * 3.6 * 3.6);
 }
 
 /** Ligevægtsoverhøjde h_eq [mm] */
@@ -48,16 +48,20 @@ export function maxSpeed(R: number, h: number, I: number, rs: RuleSet): number {
  * og h ≤ hmax:
  *   R ≥ C·V² / (hmax + Imax)          (hastighedskrav)
  *   R ≥ C·(V² − Vmin²) / (Imax + Emax) (krav fra hastighedsspredning)
+ *   C·V²/R − Imax ≤ (R − 50)/1,5      (Sporregler formel 4a – afsporingsrisiko i små radier)
  */
 export function minRadiusMixed(
   V: number, Vmin: number, hmax: number, Imax: number, Emax: number, rs: RuleSet,
-): { R: number; styrende: 'hastighed' | 'spredning'; Rhast: number; Rspred: number } {
+): { R: number; styrende: 'hastighed' | 'spredning' | 'afsporing'; Rhast: number; Rspred: number; R4a: number } {
   const C = cantConstant(rs);
   const Rhast = (C * V * V) / (hmax + Imax);
   const Rspred = (C * Math.max(0, V * V - Vmin * Vmin)) / (Imax + Emax);
-  return Rhast >= Rspred
-    ? { R: Rhast, styrende: 'hastighed', Rhast, Rspred }
-    : { R: Rspred, styrende: 'spredning', Rhast, Rspred };
+  // Positiv rod af R² + (1,5·I − 50)·R − 1,5·C·V² = 0
+  const b = 1.5 * Imax - 50;
+  const R4a = (-b + Math.sqrt(b * b + 6 * C * V * V)) / 2;
+  const R = Math.max(Rhast, Rspred, R4a);
+  const styrende = R === Rspred && Rspred > Rhast ? 'spredning' : R === R4a && R4a > Rhast ? 'afsporing' : 'hastighed';
+  return { R, styrende, Rhast, Rspred, R4a };
 }
 
 /** Tilladt overhøjdeinterval [h_lav; h_høj] givet V, Vmin og grænser. */
@@ -71,7 +75,7 @@ export function cantWindow(
   rs: RuleSet,
 ): { lav: number; hoej: number; muligt: boolean } {
   const lav = Math.max(0, equilibriumCant(V, R, rs) - Imax);
-  const hoej = Math.min(hmax, equilibriumCant(Vmin, R, rs) + Emax);
+  const hoej = Math.min(hmax, equilibriumCant(Vmin, R, rs) + Emax, hMaxAfsporing(R));
   return { lav, hoej, muligt: lav <= hoej };
 }
 

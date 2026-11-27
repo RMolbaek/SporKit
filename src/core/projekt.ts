@@ -8,7 +8,7 @@
  *  - Overhøjde h [mm] er altid positiv og ligger i kurvens yderside.
  */
 import {
-  BANEDANMARK, fiktivtRyk, iUndtagelse, limitDhdt, limitDIdt, limitFiktivtRyk, limitI, limitSpringI, MIN_OVERGANGSKURVE, samletStatus, vurder,
+  BANEDANMARK, fiktivtRyk, hMaxAfsporing, iUndtagelse, limitDhdt, limitDIdt, limitFiktivtRyk, limitH, limitI, limitSpringI, mellemstykkeKrav, MIN_OVERGANGSKURVE, samletStatus, vurder,
   type RuleSet, type Settings, type SporKlasse, type Status,
 } from './rules';
 import { cantConstant } from './formulas';
@@ -465,7 +465,7 @@ export function analyser(elementer: Element[], valg: ProfilValg, s: Settings, rs
     const m = gMin.get(gg) ?? { n: Infinity, u: Infinity };
     gMin.set(gg, { n: Math.min(m.n, egen[i].n), u: Math.min(m.u, egen[i].u) });
   });
-  return elementer.map((e, i) => {
+  const res: ElementAnalyse[] = elementer.map((e, i) => {
     const gm = gruppe[i] >= 0 ? gMin.get(gruppe[i])! : { n: Infinity, u: Infinity };
     const VtN = Math.min(valg.V, ned5(gm.n)), VtU = Math.min(valg.V, ned5(gm.u));
     let begraensning = 'Strækningshastighed';
@@ -491,6 +491,20 @@ export function analyser(elementer: Element[], valg: ProfilValg, s: Settings, rs
     }
     return { nr: i + 1, e, kriterier: krit[i], VmaxN: egen[i].n, VmaxU: egen[i].u, VtN, VtU, begraensning, Veval, vaerdier: r.vaerdier, status: r.status };
   });
+  // Retlinet mellemstykke mellem to kurver med separate overgangskurver (Sporregler 2.08.2–2.08.4)
+  for (let i = 1; i < res.length - 1; i++) {
+    const x = res[i];
+    if (x.e.type !== 'ret' || res[i - 1].e.type === 'ret' || res[i + 1].e.type === 'ret') continue;
+    const Vm = valg.vurderVed === 'straekning' ? valg.V : Math.max(res[i - 1].VtN, res[i + 1].VtN);
+    // ΔI < 40 mm i forhold til en af de nærmeste kurver tillader 0,10·V som undtagelse
+    const Inaer = [res[i - 1], res[i + 1]].map((n) => n.vaerdier.find((v) => v.symbol === 'I')?.v ?? NaN).filter(Number.isFinite);
+    const k = mellemstykkeKrav(Vm, Inaer.some((I) => Math.abs(I) < 40));
+    const stL: Status = x.e.L >= k.normal - 1e-6 ? 'ok' : x.e.L >= k.undtagelse - 1e-6 ? 'undtagelse' : 'overskredet';
+    x.vaerdier.push({ label: `Retlinet mellemstykke ved V = ${Vm} km/t`, symbol: 'Ls', v: x.e.L, unit: 'm', d: 1, graense: `≥ ${k.normal.toFixed(1).replace('.', ',')} / ${k.undtagelse.toFixed(1).replace('.', ',')} (ønsket ${k.oensket.toFixed(1).replace('.', ',')})`, status: stL, formel: Vm > 200 ? '0,67·V / 0,40·V' : '0,25·V (min. 20 m) / 0,20·V' });
+    x.kriterier.push({ navn: 'Retlinet mellemstykke (2.08)', Vn: Vm > 200 ? x.e.L / 0.67 : (x.e.L >= 20 ? x.e.L / 0.25 : 0), Vu: Vm > 200 ? x.e.L / 0.4 : x.e.L / 0.2, formel: 'Ls ≥ 0,25·V, min. 20 m (normal) / 0,20·V (undt.)' });
+    x.status = samletStatus([x.status, stL]);
+  }
+  return res;
 }
 
 /** Alle parametre for et element ved hastigheden V. */
@@ -502,13 +516,17 @@ export function vaerdierVed(e: Element, V: number, Vmin: number, s: Settings, rs
   if (e.type === 'kurve' && e.R0) {
     const R = Math.abs(e.R0), h = e.h0;
     const heq = C * V * V / R, I = heq - h, E = h - C * Vmin * Vmin / R;
-    const sh = vurder(h, rs.overhoejdeMax), sI = vurder(Math.max(0, I), lim), sE = vurder(Math.max(0, E), rs.overskydendeOverhoejdeMax);
-    st.push(sh, sI, sE);
+    const HL = limitH(rs, { trafik: s.tsiTrafik });
+    const h4a = hMaxAfsporing(R);
+    const sh = vurder(h, HL), sI = vurder(Math.max(0, I), lim), sE = vurder(Math.max(0, E), rs.overskydendeOverhoejdeMax);
+    const s4a: Status = h <= h4a + 1e-9 ? 'ok' : 'overskredet';
+    st.push(sh, sI, sE, s4a);
     v.push(
       { label: 'Afbalanceret overhøjde', symbol: 'hₐ', v: heq, unit: 'mm', d: 0, formel: 'C·V²/R' },
-      { label: 'Overhøjde', symbol: 'h', v: h, unit: 'mm', d: 0, graense: f(rs.overhoejdeMax), status: sh },
+      { label: 'Overhøjde', symbol: 'h', v: h, unit: 'mm', d: 0, graense: f(HL), status: sh },
+      { label: 'Afsporingskrav (formel 4a)', symbol: 'h₄ₐ', v: h4a, unit: 'mm', d: 0, graense: 'h ≤ (R − 50)/1,5', status: s4a },
       { label: 'Overhøjdeunderskud', symbol: 'I', v: I, unit: 'mm', d: 0, graense: f(lim), status: sI, formel: 'hₐ − h' },
-      { label: `Overhøjdeoverskud (V = ${Vmin})`, symbol: 'E', v: E, unit: 'mm', d: 0, graense: `≤ ${rs.overskydendeOverhoejdeMax.normal}`, status: sE, formel: 'h − C·Vmin²/R' },
+      { label: `Overhøjdeoverskud (V = ${Vmin})`, symbol: 'E', v: E, unit: 'mm', d: 0, graense: `≤ ${rs.overskydendeOverhoejdeMax.normal}`, status: sE, formel: 'h − C·Vmin²/R (formel 9)' },
       { label: 'Ukompenseret sideacceleration', symbol: 'a_q', v: rs.g * I / rs.kontaktafstand, unit: 'm/s²', d: 2, formel: 'g·I/1500' },
     );
   }

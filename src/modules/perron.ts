@@ -4,7 +4,7 @@ import {
 } from '../core/perron';
 import { SKINNE_60E2 } from '../core/overbygning';
 import { setReport } from '../core/report';
-import { loadSettings, type Status } from '../core/rules';
+import { loadSettings, type Status, BANEDANMARK as rs, limitH, vurder } from '../core/rules';
 import { TSI_PERRON_HOEJDER, TSI_PERRON_HOEJDE_STOG, TSI_PERRON_R_MIN, TSI_CANT_PERRON, TSI_PERRON_BQ_TOL, tsiStatus, TSI_KILDE } from '../core/tsi';
 import { card, fmt, form, h, loadState, results, saveState, select, tsiBlock, type Module } from '../ui/dom';
 
@@ -104,7 +104,10 @@ export const perron: Module = {
       const glob = perronGlobal(Afig, Hfig, st.h, opt.side as 'inder' | 'yder');
       const fig = perronFigur(Afig, Hfig, st.h, opt.side as 'inder' | 'yder');
       const sitTxt = SITUATIONER.find((x) => x[0] === s)![1];
-      const total: Status | null = sA === 'overskredet' || sH === 'overskredet' ? 'overskredet' : sA || sH ? 'ok' : null;
+      const HLp = limitH(rs, { perron: true });
+      const sOvh: Status = vurder(st.h, HLp);
+      const sRp: Status | null = st.R > 0 && (s === 'nyanlaeg') ? (st.R >= 300 ? 'ok' : 'overskredet') : null;
+      const total: Status | null = sA === 'overskredet' || sH === 'overskredet' || sOvh === 'overskredet' || sRp === 'overskredet' ? 'overskredet' : sOvh === 'undtagelse' ? 'undtagelse' : sA || sH ? 'ok' : null;
 
       const set = loadSettings();
       const tsiH = t === '92' || t === '87' ? [...TSI_PERRON_HOEJDER, TSI_PERRON_HOEJDE_STOG] : TSI_PERRON_HOEJDER;
@@ -133,6 +136,7 @@ export const perron: Module = {
             sub: st.hojde > 0 ? 'angivet' : 'efter perrontype og situation' },
           { symbol: 'H', label: 'Tilladt perronhøjde', value: Hmin === null && Hmax === null ? 'Ingen krav' : `${Hmin !== null ? fmt(Hmin) : '–'} … ${Hmax !== null ? fmt(Hmax) : '∞'}`, unit: Hmin === null && Hmax === null ? '' : 'mm',
             sub: `Tolerance ${TOL_TXT(tH)}` },
+          { symbol: 'h', label: 'Overhøjde langs perron', value: fmt(st.h), unit: 'mm', status: sOvh, sub: `≤ ${HLp.normal} mm (undt. ${HLp.undtagelse} mm) – Sporregler formel (8)` },
           ...(st.Am > 0 ? [{ symbol: 'A<sub>målt</sub>', label: 'Målt perronafstand', value: fmt(st.Am), unit: 'mm', status: sA!,
             sub: A !== null ? `afvigelse ${st.Am - A >= 0 ? '+' : ''}${fmt(st.Am - A)} mm` : '' }] : []),
           ...(st.Hm > 0 ? [{ symbol: 'H<sub>målt</sub>', label: 'Målt perronhøjde', value: fmt(st.Hm), unit: 'mm', status: sH!,
@@ -176,6 +180,8 @@ export const perron: Module = {
           { label: 'Forkant lodret fra SO (nærmeste skinne)', formel: 'Δy = ∓A·sin θ + H·cos θ', indsat: '', resultat: `${fmt(glob.lodret)} mm` },
         ],
         checks: [
+          { label: 'Overhøjde langs perron', value: `${fmt(st.h)} mm`, graense: `≤ ${HLp.normal} / ${HLp.undtagelse} mm`, status: sOvh, kilde: 'SR87 afsn. 2.03.4 formel (8), 2.03.5' },
+          ...(sRp ? [{ label: 'Radius langs perron på ny strækning', value: `${fmt(st.R)} m`, graense: '≥ 300 m (ønskeligt ret spor)', status: sRp, kilde: 'SR87 afsn. 2.02.2–2.02.3' }] : []),
           ...(st.Am > 0 && A !== null ? [{ label: 'Målt perronafstand', value: `${fmt(st.Am)} mm`, graense: `${fmt(A)} ${TOL_TXT(tA)}`, status: sA!, kilde: 'BN1-49-1 fig. 8.2-1 / 9-1 / 11-1' }] : []),
           ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
           ...(st.Hm > 0 && Href !== null ? [{ label: 'Målt perronhøjde', value: `${fmt(st.Hm)} mm`, graense: `${fmt(Href)} ${TOL_TXT(tH)}`, status: sH!, kilde: 'BN1-49-1 fig. 9-1 / 11-1' }] : []),

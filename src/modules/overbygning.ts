@@ -33,7 +33,7 @@ export const overbygning: Module = {
       const svelleId = ob.svelle === 'S16' ? 'S16' : 'S99';
       const fig = trackCrossSection({ svelle: svelleId, spec, h: st.h, V: st.V });
       const km = ob.km ? ob.km[0] + ob.km[1] + ob.km[2] : null;
-      const kon = sk.hoved === 72 && ob.haeldning === 40 ? projekteretKonicitet(svs.sporvidde as 1435 | 1437, 40) : null;
+      const kon = (sk.id === '60E1' || sk.id === '60E2') && (ob.haeldning === 40 || ob.haeldning === 20) ? projekteretKonicitet(svs.sporvidde === 1437 ? 1437 : 1435, ob.haeldning as 20 | 40, sk.id) : null;
       const konG = konicitetGraense(st.V);
       const rows: [string, string][] = [
         ['Betegnelse', `${esc(spec.navn)} – varianter: ${ob.varianter.map(esc).join(', ')}`],
@@ -48,7 +48,7 @@ export const overbygning: Module = {
         ['Omfang medio 2016', ob.km ? `${fmt(km!)} km – hovedspor ${ob.km[0]}, togvejsspor ${ob.km[1]}, sidespor ${ob.km[2]} (figur 132)` : 'ikke opgjort (ny eller lille type)'],
         ['Normaltegning', esc(ob.blade)],
         ...(ob.id === 'Dmp' ? [['Mellemlæg', `${MELLEMLAEG_DMP.haard}; ${MELLEMLAEG_DMP.bloed}`] as [string, string]] : []),
-        ...(kon !== null ? [['Projekteret ækvivalent konicitet', `${fmt(kon, 3)} · grænse ${konG !== null ? `≤ ${fmt(konG, 2)} ved V = ${st.V} km/t ${kon <= konG ? '✓' : '✗'}` : 'ingen (V ≤ 60)'} – BN1-38 tabel 11.5.2`] as [string, string]] : []),
+        ...(kon !== null ? [['Projekteret ækvivalent konicitet', `${fmt(kon, 3)} (${sk.id}, ${svs.sporvidde} mm, 1:${ob.haeldning}, værste af 4 hjulsæt) · grænse ${konG !== null ? `≤ ${fmt(konG, 2)} ved V = ${st.V} km/t ${kon <= konG ? '✓' : '✗'}` : 'ingen (V ≤ 60)'} – BN1-38 tabel 11.5.2`] as [string, string]] : []),
         ['Svelleafstand', `${SVELLEAFSTAND} mm c/c (hoved-, regional- og S-baner)`],
         ['Kilde', `Sporteknik 2. udg. (2016) ${ob.sider}, figur 18, 35, 92 og 132`],
       ];

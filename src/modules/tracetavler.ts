@@ -1,7 +1,7 @@
 import {
   horisontaleTavler, vertikaleTavler, kmTekst, TAVLE_TOLERANCE, type Element, type Overgang, type Knaek, type Tavle,
 } from '../core/tracetavle';
-import { BANEDANMARK as rs, vurder, limitI, loadSettings, samletStatus, type Status } from '../core/rules';
+import { BANEDANMARK as rs, vurder, limitI, loadSettings, samletStatus, limitH, hMaxAfsporing, afrundingsKrav, type Status } from '../core/rules';
 import { equilibriumCant, transitionLengths } from '../core/formulas';
 import { TSI_RV_MIN, TSI_KILDE } from '../core/tsi';
 import { setReport } from '../core/report';
@@ -136,9 +136,12 @@ export const tracetavler: Module = {
       st.elementer.forEach((e, i) => {
         if (e.type !== 'bue') return;
         const LI = limitI(rs, V, set);
-        checks.push({ label: `Bue ${i + 1} (R ${fmt(e.R ?? 0)}): overhøjde`, value: `${fmt(hOf(e))} mm`, graense: `≤ ${rs.overhoejdeMax.normal} / ${rs.overhoejdeMax.undtagelse} mm`, status: vurder(hOf(e), rs.overhoejdeMax), kilde: 'SR87 afsn. 2.03 · sekundær' });
+        const HL = limitH(rs, { trafik: set.tsiTrafik });
+        checks.push({ label: `Bue ${i + 1} (R ${fmt(e.R ?? 0)}): overhøjde`, value: `${fmt(hOf(e))} mm`, graense: `≤ ${HL.normal} / ${HL.undtagelse} mm`, status: vurder(hOf(e), HL), kilde: 'SR87 afsn. 2.03.4–2.03.5' });
+        const h4a = hMaxAfsporing(e.R ?? 0);
+        if (hOf(e) > h4a) checks.push({ label: `Bue ${i + 1} (R ${fmt(e.R ?? 0)}): afsporingskrav`, value: `${fmt(hOf(e))} mm`, graense: `≤ (R − 50)/1,5 = ${fmt(h4a, 1)} mm`, status: 'overskredet', kilde: 'SR87 afsn. 2.03.3 formel (4a)' });
         const I = IOf(e);
-        checks.push({ label: `Bue ${i + 1} (R ${fmt(e.R ?? 0)}): overhøjdeunderskud`, value: `${fmt(I)} mm`, graense: `≤ ${LI.normal} / ${LI.undtagelse} mm`, status: I > 0 ? vurder(I, LI) : 'ok', kilde: 'SR87 afsn. 2.03 · sekundær' });
+        checks.push({ label: `Bue ${i + 1} (R ${fmt(e.R ?? 0)}): overhøjdeunderskud`, value: `${fmt(I)} mm`, graense: `≤ ${LI.normal} / ${LI.undtagelse} mm`, status: I > 0 ? vurder(I, LI) : 'ok', kilde: 'SR87 afsn. 2.03.4–2.03.5' });
       });
       st.overgange.forEach((t, i) => {
         const a = st.elementer[i], b = st.elementer[i + 1];
@@ -161,16 +164,19 @@ export const tracetavler: Module = {
         }
         if (sam) {
           const n = Math.max(okKrav.normal, rN), u = Math.max(okKrav.undtagelse, rU);
-          checks.push({ label: `Overgang ${i + 1}: overgangskurve/rampe`, value: `${fmt(t.okl)} m`, graense: `≥ ${fmt(n, 1)} / ${fmt(u, 1)} m`, status: st3(t.okl, n, u), kilde: 'SR87 afsn. 2.05–2.06 · antaget' });
+          checks.push({ label: `Overgang ${i + 1}: overgangskurve/rampe`, value: `${fmt(t.okl)} m`, graense: `≥ ${fmt(n, 1)} / ${fmt(u, 1)} m`, status: st3(t.okl, n, u), kilde: 'SR87 afsn. 2.05–2.06' });
         } else {
-          if (Math.abs(dI) > 0) checks.push({ label: `Overgang ${i + 1}: overgangskurve (dI/dt)`, value: `${fmt(t.okl)} m`, graense: `≥ ${fmt(okKrav.normal, 1)} / ${fmt(okKrav.undtagelse, 1)} m`, status: st3(t.okl, okKrav.normal, okKrav.undtagelse), kilde: 'SR87 afsn. 2.05 · antaget' });
-          if (Math.abs(dh) > 0) checks.push({ label: `Overgang ${i + 1}: overhøjderampe`, value: `${fmt(t.rpl)} m`, graense: `≥ ${fmt(rN, 1)} / ${fmt(rU, 1)} m`, status: st3(t.rpl, rN, rU), kilde: 'SR87 afsn. 2.06 · antaget' });
+          if (Math.abs(dI) > 0) checks.push({ label: `Overgang ${i + 1}: overgangskurve (dI/dt)`, value: `${fmt(t.okl)} m`, graense: `≥ ${fmt(okKrav.normal, 1)} / ${fmt(okKrav.undtagelse, 1)} m`, status: st3(t.okl, okKrav.normal, okKrav.undtagelse), kilde: 'SR87 afsn. 2.05' });
+          if (Math.abs(dh) > 0) checks.push({ label: `Overgang ${i + 1}: overhøjderampe`, value: `${fmt(t.rpl)} m`, graense: `≥ ${fmt(rN, 1)} / ${fmt(rU, 1)} m`, status: st3(t.rpl, rN, rU), kilde: 'SR87 afsn. 2.06' });
         }
       });
       st.knaek.forEach((k, i) => {
         const di = k.i2 - k.i1;
         if (Math.abs(di) <= 1) return;
-        checks.push({ label: `Knæk ${i + 1}: lodret radius (hovedbaner)`, value: `${fmt(k.Rv)} m`, graense: `≥ ${fmt(rs.lodretRadiusMin.normal)} m`, status: k.Rv >= rs.lodretRadiusMin.normal ? 'ok' : 'overskredet', kilde: 'SR87 afsn. 2.10 · sekundær' });
+        const ak = afrundingsKrav(V);
+        checks.push({ label: `Knæk ${i + 1}: afrundingsradius`, value: `${fmt(k.Rv)} m`, graense: `≥ ${fmt(ak.normal)} / ${fmt(ak.undtagelse)} m`, status: k.Rv >= ak.normal - 1e-6 ? 'ok' : k.Rv >= ak.undtagelse - 1e-6 ? 'undtagelse' : 'overskredet', kilde: 'SR87 afsn. 2.10.3 formel (39)/(41)' });
+        const Lk = (k.Rv * Math.abs(di)) / 1000;
+        if (Lk < 20) checks.push({ label: `Knæk ${i + 1}: afrundingskurvens længde`, value: `${fmt(Lk, 1)} m`, graense: '≥ 20 m', status: 'overskredet', kilde: 'SR87 afsn. 2.10.3' });
         if (set.tsi) {
           const m = di < 0 ? TSI_RV_MIN.top : TSI_RV_MIN.lavning;
           checks.push({ label: `TSI: Knæk ${i + 1}: lodret radius`, value: `${fmt(k.Rv)} m`, graense: `≥ ${m} m`, status: k.Rv >= m ? 'ok' : 'overskredet', kilde: `${TSI_KILDE} 4.2.3.5` });

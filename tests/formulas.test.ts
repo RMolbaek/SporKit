@@ -652,7 +652,7 @@ describe('Projekt: import og hastighedsprofil', () => {
     const { elementer } = elementerFraTabel(t, { felter: gaetFelter(t.header), kmEnhed: 'auto', positiv: 'hoejre' });
     const a = analyser(elementer, { V: 160, Vmin: 80, vurderVed: 'profil' }, DEFAULT_SETTINGS);
     // R = 800, h = 120, I = 100: V = √(220·800/11,8) = 122,1 → 120 km/t for hele kurvegruppen
-    expect(a[2].kriterier[0].Vn).toBeCloseTo(Math.sqrt(220 * 800 / (1500 / (9.81 * 3.6 * 3.6))), 6);
+    expect(a[2].kriterier[0].Vn).toBeCloseTo(Math.sqrt(220 * 800 / 11.8), 6); // Sporregler formel (13) med C = 11,8
     expect(a[1].VtN).toBe(120);
     expect(a[2].VtN).toBe(120);
     expect(a[3].VtN).toBe(120);
@@ -766,5 +766,53 @@ describe('Overbygningstyper (Sporteknik)', () => {
     expect(c.dele[2]).toContain('Azobé');
     expect(afkodBetegnelse('UIC60 Dmp')!.dele).toEqual(['D: Dobbeltelastisk befæstelse', 'm: Monobloksvelle (beton)', 'p: Pandrol Fastclip FC (S99)']);
     expect(afkodBetegnelse('xyz')).toBeNull();
+  });
+});
+
+import { limitH, hMaxAfsporing, hOenskelig, limitISporskifte, afrundingsKrav, mellemstykkeKrav, radiusKrav } from '../src/core/rules';
+
+describe('Normkontrol: Sporregler 2017', () => {
+  it('C = 11,8 og formel (4), (4a)', () => {
+    expect(cantConstant(BANEDANMARK)).toBe(11.8);
+    expect(hMaxAfsporing(290)).toBeCloseTo(160, 9);
+    expect(hOenskelig(100, 1000)).toBeCloseTo(80, 9);
+    expect(hOenskelig(200, 1000)).toBe(115);
+  });
+  it('overhøjdegrænser efter situation (2.03.4–2.03.5)', () => {
+    expect([limitH(BANEDANMARK, { trafik: 'person' }).normal, limitH(BANEDANMARK, { trafik: 'person' }).undtagelse]).toEqual([160, 180]);
+    expect(limitH(BANEDANMARK, { trafik: 'blandet' }).undtagelse).toBe(160);
+    expect([limitH(BANEDANMARK, { sporskifte: true }).normal, limitH(BANEDANMARK, { sporskifte: true }).undtagelse]).toEqual([120, 160]);
+    expect([limitH(BANEDANMARK, { perron: true }).normal, limitH(BANEDANMARK, { perron: true }).undtagelse]).toEqual([60, 110]);
+    expect(limitH(BANEDANMARK, { grus: true }).normal).toBe(80);
+    expect([limitISporskifte(BANEDANMARK, 90).normal, limitISporskifte(BANEDANMARK, 150).normal]).toEqual([100, 80]);
+  });
+  it('mindste radius med formel (4a)', () => {
+    // V = 70, h = 160, I = 100: R_V = 11,8·4900/260 = 222 m; (4a): R² + 100R − 1,5·11,8·4900 = 0 → R = 249 m
+    const m = minRadiusMixed(70, 70, 160, 100, 110, BANEDANMARK);
+    expect(m.Rhast).toBeCloseTo(11.8 * 4900 / 260, 6);
+    expect(m.R4a).toBeCloseTo((-100 + Math.sqrt(100 * 100 + 6 * 11.8 * 4900)) / 2, 6);
+    expect(m.styrende).toBe('afsporing');
+    expect(radiusKrav('hovedspor')).toMatchObject({ oensket: 700, normal: 300, undtagelse: 150 });
+    expect(radiusKrav('togvejsspor').normal).toBe(190);
+  });
+  it('afrundingskurver (2.10.3) og stigning (2.10.2)', () => {
+    expect(afrundingsKrav(160)).toEqual({ oensket: [25600, 40000], normal: 8960, undtagelse: 6400 });
+    expect(afrundingsKrav(100)).toEqual({ oensket: [10000, 40000], normal: 5000, undtagelse: 2500 });
+    expect(afrundingsKrav(100, true).normal).toBe(3500);
+    expect(afrundingsKrav(250)).toEqual({ oensket: [40000, 40000], normal: 21875, undtagelse: 10937.5 });
+    expect([BANEDANMARK.stigningMax.normal, BANEDANMARK.stigningPerron.normal]).toEqual([12.5, 2.5]);
+  });
+  it('retlinet mellemstykke (2.08)', () => {
+    expect(mellemstykkeKrav(160)).toEqual({ oensket: 64, normal: 40, undtagelse: 32 });
+    expect(mellemstykkeKrav(60).normal).toBe(20);
+    expect(mellemstykkeKrav(160, true).undtagelse).toBeCloseTo(16, 9);
+    expect(mellemstykkeKrav(220).normal).toBeCloseTo(147.4, 9);
+  });
+  it('BN1-38 fodnote 10: minustolerancer i fk 3/4/Max regnes fra 1435 ved 1437', () => {
+    // B: fk1 +5/−2, fk3 +15/−6, fk4 +25/−6
+    expect(sporviddeKlasse(1430, 'B', 1437).fejlklasse).toBe('1'); // −7 ift. 1437 (fk 1: −2), men kun −5 ift. 1435 (fk 3/4: −6)
+    expect(sporviddeKlasse(1428, 'B', 1437).fejlklasse).toBe('4');
+    expect(sporviddeKlasse(1438, 'B', 1445).fejlklasse).toBe('4'); // R < 190: minus fra 1445 (−7)
+    expect(sporviddeKlasse(1432, 'B', 1445).fejlklasse).toBe('Max/Min'); // −13 ift. 1445
   });
 });

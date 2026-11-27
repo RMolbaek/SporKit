@@ -4,7 +4,8 @@
  * med sammenligning mod eksisterende tavler – også uden for projektets grænser.
  */
 import { kappa, springDI, type Element, type Spring } from './projekt';
-import { fiktivtRyk, limitFiktivtRyk, limitSpringI, samletStatus, vurder, type SporKlasse, type Status } from './rules';
+import { BANEDANMARK, fiktivtRyk, limitFiktivtRyk, limitSpringI, samletStatus, vurder, type SporKlasse, type Status } from './rules';
+import { cantConstant } from './formulas';
 import { horisontaleTavler, type Element as TElement, type Overgang, type Tavle } from './tracetavle';
 
 /* ============================== geometri i et punkt ============================== */
@@ -142,7 +143,7 @@ export function kontrolPunkt(navn: string, km: number, ind: Tilstand | null, ud:
     k.checks.push({ label: `Spring i krumning: ${rT(ind.R)} → ${rT(ud.R)}`, value: `ΔI = ${f0(dI)} mm ved ${f0(V)} km/t`, graense: `ΔI ≤ ${cap} mm`, status: dI <= cap + 1e-9 ? 'ok' : 'overskredet', kilde: 'SR87 afsn. 2.05.3' });
     k.checks.push({ label: 'Fiktivt ryk ΔI·V/(3,6·20)', value: `${f1(ryk)} mm/s`, graense: `≤ ${lim.normal} / ${lim.undtagelse} mm/s`, status: vurder(ryk, lim), kilde: 'SR87 afsn. 2.05.2–2.05.3, tillæg 2C' });
     // største V, der overholder springkravene
-    const C = 1500 / (9.81 * 3.6 * 3.6);
+    const C = cantConstant(BANEDANMARK);
     const vRyk = (l: number) => (dk > 0 && dh <= 0.5 ? Math.cbrt((l * 72) / (C * dk)) : Infinity);
     const vCap = dk > 0 && dh <= 0.5 ? Math.sqrt(125 / (C * dk)) : Infinity;
     k.Vmax = { n: Math.min(vRyk(lim.normal), vCap), u: Math.min(vRyk(lim.undtagelse), vCap) };

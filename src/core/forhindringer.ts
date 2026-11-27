@@ -70,6 +70,8 @@ export interface KontrolValg {
   /** Eksisterende og projekteret geometri – til bindinger */
   eks?: Element[];
   proj?: Element[];
+  /** Strækningshastighed [km/t] – sporskifter ved V > 200 skal ligge på ret spor uden overhøjde (SR87 2.03.6) */
+  V?: number;
 }
 
 export function kontrollerForhindring(f: Forhindring, el: Element[], v: KontrolValg = {}): ForhKontrol {
@@ -93,6 +95,7 @@ export function kontrollerForhindring(f: Forhindring, el: Element[], v: KontrolV
     case 'sporskifte': {
       c.push({ label: 'Overhøjde i sporskifte', value: `${f0(g.hMax)} mm`, graense: '≤ 120 mm (undt. 160 mm)', status: g.hMax <= 120 + 1e-6 ? 'ok' : g.hMax <= 160 + 1e-6 ? 'undtagelse' : 'overskredet', kilde: 'SR87 2.03.4 (6), 2.03.5' });
       c.push({ label: 'Placering', value: typeTxt, graense: 'ret spor eller cirkelbue – ikke overgangskurve', status: iOvergang ? 'overskredet' : 'ok', kilde: 'SR87 2.03.6' });
+      if ((v.V ?? 0) > 200) c.push({ label: `Sporskifte ved V = ${v.V} km/t`, value: iRet && g.hMax < 0.5 ? 'ret spor uden overhøjde' : typeTxt, graense: '200 < V ≤ 250: ret spor uden overhøjde', status: iRet && g.hMax < 0.5 ? 'ok' : 'overskredet', kilde: 'SR87 2.03.6' });
       if (g.dh > 0.5) c.push({ label: 'Overhøjderampe i sporskiftet', value: `Δh = ${f0(g.dh)} mm`, graense: 'konstant overhøjde', status: 'overskredet', kilde: 'SR87 2.03.6' });
       break;
     }

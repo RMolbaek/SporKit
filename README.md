@@ -59,6 +59,7 @@ SporKit skal være åbent og tilgængeligt for alle:
 - **Værktøjet** er gratis og offentligt på GitHub Pages, og kildekoden ligger i et offentligt repo.
 - **Data bliver hos brugeren**: alle beregninger sker i browseren; intet sendes til en server.
 - **Kilder**: hver reference er mærket *Frit tilgængelig*, *Skal købes* eller *Ikke fundet offentligt*, og frit tilgængelige kilder er linket – i appen og i PDF-rapporterne. Banedanmarks banenormer ([oversigt](https://www.bane.dk/da/Leverandoer/Krav/Tekniske-normer-og-regler/Banenormer)), lærebogen *Sporteknik* og TSI'erne (EUR-Lex) er frit tilgængelige.
+- **Normkontrol**: alle grænseværdier og formler er gennemgået mod de åbne kilder (Sporregler med rettelser til 2017, banenormerne, Sporteknik og TSI INF) – se [NORMKONTROL.md](NORMKONTROL.md) for hvad der er verificeret, rettet og tilføjet.
 - DS/EN-standarder skal købes; SporKit henviser kun til dem og bruger ikke deres indhold. Sporregler 1987 er ikke fundet offentligt – værdierne er gengivet fra *Sporteknik*.
 - Grænseværdier uden frit tilgængelig kilde er markeret **«Ingen åben kilde» / «Antaget»** og skal kontrolleres. En automatisk test sikrer, at åbne kilder har et link, og at værdier uden åben kilde er markeret.
 

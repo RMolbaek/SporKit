@@ -324,7 +324,7 @@ export const projekt: Module = {
           'Hastigheden gælder hele kurvegruppen (indløbsovergang, bue, udløbsovergang). Ret spor begrænses kun af strækningshastigheden.',
           'Profilet tager ikke hensyn til sporskifter, perroner, overkørsler, lodrette kurver, sigt eller signaler.',
         ],
-        refs: ['SR87', 'ST16', 'EN13803'],
+        refs: ['SR87', 'ST16'],
         figur: fig,
         sider: [`<h2>Elementer og parametre</h2>${tabelHtml(a, false)}`, ...(forhSide ? [forhSide] : []), ...tilslutningSider],
       });
@@ -334,7 +334,7 @@ export const projekt: Module = {
     const forhKontroller = (el: Element[]): ForhKontrol[] => {
       const tl = tilslutning();
       const both = p.data.eksisterende && p.data.projekteret && tl;
-      return (p.forhindringer ?? []).map((f) => kontrollerForhindring(f, el, both ? { graenser: [tl.start, tl.slutProj], eks: p.data.eksisterende!.elementer, proj: p.data.projekteret!.elementer } : {}))
+      return (p.forhindringer ?? []).map((f) => kontrollerForhindring(f, el, both ? { graenser: [tl.start, tl.slutProj], eks: p.data.eksisterende!.elementer, proj: p.data.projekteret!.elementer, V: p.V } : { V: p.V }))
         .sort((x, y) => x.f.km0 - y.f.km0);
     };
     let forhSide = '';

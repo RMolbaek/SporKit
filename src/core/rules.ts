@@ -35,12 +35,12 @@ export interface Settings {
   tsiSpor: 'ballast' | 'fast';
   /** Nyanlæg (TSI-krav for nye strækninger gælder) */
   nyStraekning: boolean;
-  /** Projekteret sporvidde på ret spor og R ≥ 190 m (1437 mm på TEN-strækninger) */
+  /** Projekteret sporvidde for sveller på ret spor og R ≥ 190 m: 1437 mm (Sporregler 2.12.1; 1435 mm tilladt frem til 31.05.2021) */
   sporvidde: 1435 | 1437;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  skinne: '60E2', saerligeTogsaet: false, tsi: true, tsiTrafik: 'blandet', tsiSpor: 'ballast', nyStraekning: false, sporvidde: 1435,
+  skinne: '60E2', saerligeTogsaet: false, tsi: true, tsiTrafik: 'blandet', tsiSpor: 'ballast', nyStraekning: false, sporvidde: 1437,
 };
 
 export interface RuleSet {
@@ -49,6 +49,8 @@ export interface RuleSet {
   sporvidde: number;
   kontaktafstand: number;
   g: number;
+  /** Konstanten i h_a = C·V²/R; Sporreglerne bruger 11,8 i formel (1)–(14) */
+  C: number;
   overhoejdeMax: Limit;
   manglendeOverhoejdeMax: Limit;
   manglendeOverhoejdeSporskifte: Limit;
@@ -71,6 +73,7 @@ export const BANEDANMARK: RuleSet = {
   sporvidde: 1435,
   kontaktafstand: 1500,
   g: 9.81,
+  C: 11.8,
   overhoejdeMax: {
     label: 'Overhøjde h',
     normal: 160,
@@ -91,14 +94,15 @@ export const BANEDANMARK: RuleSet = {
     status: 'verificeret',
   },
   manglendeOverhoejdeSporskifte: {
-    label: 'I i krumme sporskifter (V > 100 km/t)',
+    label: 'I i krumme sporskifter',
     normal: 80,
     undtagelse: 80,
     unit: 'mm',
-    note: 'Vigespor i I-krumme sporskifter og U-krumme sporskifter ved V > 100 km/t (tvangskinnepåvirkning).',
-    kilde: ['ST16 s. 246–247', 'BN1-14'],
-    status: 'sekundaer',
+    note: 'Afvigende spor i i-krummede sporskifter og stamspor i u-krummede sporskifter med faste krydsninger: I ≤ 100 mm for V ≤ 100 km/t og I ≤ 80 mm for 100 < V ≤ 200 km/t (2.03.6). Bevægelig hjertespids: som almindeligt spor.',
+    kilde: ['SR87 afsn. 2.03.6'],
+    status: 'verificeret',
   },
+
   overskydendeOverhoejdeMax: {
     label: 'Overhøjdeoverskud E',
     normal: 110,
@@ -150,52 +154,117 @@ export const BANEDANMARK: RuleSet = {
   },
 
   stigningMax: {
-    label: 'Stigning/fald i hovedspor',
-    normal: 10,
+    label: 'Stigning/fald (hoved-, togvejs- og sidespor)',
+    normal: 12.5,
     undtagelse: 15.6,
     unit: '‰',
-    note: 'Normalt maks. 10 ‰; maks. 15,6 ‰ (Storebælt, østtunnel).',
-    kilde: ['SR87 afsn. 2.10', 'ST16 s. 240'],
-    status: 'sekundaer',
+    note: 'Ønskeligt p ≤ 8 ‰; normal p ≤ 12,5 ‰. Undtagelse: blandet trafik 15,6 ‰ (delstrækninger ≤ 3 km, Korsør–Sprogø) og 25 ‰ (≤ 0,5 km); spor reserveret persontrafik 25 ‰ (≤ 10 km) og 35 ‰ (≤ 6 km) (2.10.2).',
+    kilde: ['SR87 afsn. 2.10.2'],
+    status: 'verificeret',
   },
+
   stigningPerron: {
-    label: 'Stigning ved perron/opstillingsspor',
-    normal: 1.5,
-    undtagelse: 1.5,
+    label: 'Stigning langs perron / hensætningsspor',
+    normal: 2.5,
+    undtagelse: 10,
     unit: '‰',
-    note: 'Sporet bør ligge tilnærmelsesvis vandret.',
-    kilde: ['ST16 s. 240'],
-    status: 'sekundaer',
+    note: 'Ønskeligt p ≤ 1,5 ‰. Normal: ny perron og hensætningsspor 2,5 ‰, eksisterende perron 10 ‰. Undtagelse 10 ‰ (nye strækninger med regelmæssig til-/frakobling: 2,5 ‰) (2.10.2). TSI INF 4.2.3.3: 2,5 mm/m.',
+    kilde: ['SR87 afsn. 2.10.2', 'TSI-INF 4.2.3.3'],
+    status: 'verificeret',
   },
+
   lodretRadiusMin: {
-    label: 'Mindste lodrette radius (hovedbaner)',
+    label: 'Mindste afrundingsradius R_L (V ≤ 200 km/t)',
     normal: 5000,
-    undtagelse: 5000,
+    undtagelse: 2000,
     unit: 'm',
-    note: 'Cirkelbuer i længdeprofilet på hovedbaner.',
-    kilde: ['SR87 afsn. 2.10', 'ST16 s. 240'],
-    status: 'sekundaer',
+    note: 'Normal: R_L ≥ 0,35·V², dog mindst 5.000 m ved nyanlæg, større ombygning, opgradering og sporskifter (2.000 m for eksisterende spor). Undtagelse: R_L ≥ 0,25·V², dog mindst 2.000 m (ikke sporskifter på bakkekam). V > 200: 0,35·V² ≥ 20.000 m / 0,175·V² ≥ 10.000 m (formel 39–42).',
+    kilde: ['SR87 afsn. 2.10.3'],
+    status: 'verificeret',
   },
+
   lodretRadiusMax: {
-    label: 'Største lodrette radius',
+    label: 'Ønskelig afrundingsradius',
     normal: 40000,
     undtagelse: 40000,
     unit: 'm',
-    note: 'Cirkelbuer i længdeprofilet på hovedbaner.',
-    kilde: ['ST16 s. 240'],
-    status: 'sekundaer',
+    note: 'Ønskeligt R_L ≥ 1,00·V² og 10.000 ≤ R_L ≤ 40.000 m for V ≤ 200; R_L = 40.000 m for 200 < V ≤ 250 (formel 37–38a).',
+    kilde: ['SR87 afsn. 2.10.3'],
+    status: 'verificeret',
   },
+
   lodretAccMax: {
     label: 'Lodret acceleration a_v',
     normal: 0.22,
     undtagelse: 0.31,
     unit: 'm/s²',
-    note: 'Komfortkriterie i lodrette kurver (svarer til R_v ≈ 0,35·V² hhv. 0,25·V²).',
-    kilde: ['EN13803'],
-    status: 'antaget',
+    note: 'Afledt af Sporreglernes R_L ≥ 0,35·V² (normal) og 0,25·V² (undtagelse): a_v = (V/3,6)²/R_L = 0,22 hhv. 0,31 m/s² (for V > 200 undtagelse 0,175·V² ≈ 0,44 m/s²).',
+    kilde: ['SR87 afsn. 2.10.3'],
+    status: 'verificeret',
   },
+
   radiusRetSpor: 25000,
 };
+
+/* ---------------- situationsafhængige grænser (Sporregler 2.02–2.10) ---------------- */
+
+export interface HSituation {
+  /** Blandet/gods eller spor reserveret persontrafik */
+  trafik?: 'blandet' | 'person';
+  sporskifte?: boolean;
+  perron?: boolean;
+  grus?: boolean;
+}
+
+/** Største overhøjde efter situation (2.03.4 formel 6–8 og 2.03.5). */
+export function limitH(rs: RuleSet, o: HSituation = {}): Limit {
+  const b = rs.overhoejdeMax;
+  if (o.grus) return { ...b, label: 'Overhøjde h (grusballast)', normal: 80, undtagelse: 80, note: 'Spor og sporskifter på grusballasterede baner (formel 7b).' };
+  if (o.perron) return { ...b, label: 'Overhøjde h langs perron', normal: 60, undtagelse: 110, note: 'Spor og sporskifter langs perroner for V < 250 km/t: h ≤ 60 mm (formel 8); undtagelse 110 mm (2.03.5).' };
+  if (o.sporskifte) return { ...b, label: 'Overhøjde h i sporskifte', normal: 120, undtagelse: 160, note: 'Sporskifter på stenballasterede baner: h ≤ 120 mm (formel 6); undtagelse 160 mm (2.03.5). For 200 < V ≤ 250 km/t skal sporskifter ligge på ret spor uden overhøjde (2.03.6).' };
+  return o.trafik === 'person' ? b : { ...b, undtagelse: 160, note: `${b.note} Undtagelsen på 180 mm gælder kun spor reserveret persontrafik – ved blandet trafik 160 mm.` };
+}
+
+/** Formel (4a): af hensyn til afsporingsrisiko i små radier skal h ≤ (R − 50)/1,5 altid være overholdt. */
+export const hMaxAfsporing = (R: number): number => (R > 0 ? (R - 50) / 1.5 : Infinity);
+
+/** Formel (4): ønskelig overhøjde h = 8·V²/R, dog højst 115 mm. */
+export const hOenskelig = (V: number, R: number): number => (R > 0 ? Math.min(115, (8 * V * V) / R) : 0);
+
+/** I i krumme sporskifter med faste krydsninger (2.03.6): 100 mm for V ≤ 100, 80 mm for 100 < V ≤ 200. */
+export function limitISporskifte(rs: RuleSet, V: number): Limit {
+  const v = V <= 100 ? 100 : 80;
+  return { ...rs.manglendeOverhoejdeSporskifte, normal: v, undtagelse: v };
+}
+
+export type Sportype = 'hovedspor' | 'togvejsspor' | 'sidespor' | 'firmaspor';
+export const SPORTYPE_TEKST: Record<Sportype, string> = {
+  hovedspor: 'Hoved- og gennemkørselsspor', togvejsspor: 'Øvrige togvejsspor', sidespor: 'Sidespor', firmaspor: 'Firma- og havnespor',
+};
+
+/** Mindste cirkelbueradius efter sportype (2.02.2–2.02.4). */
+export function radiusKrav(t: Sportype, perronNy = false): { oensket: number; normal: number; undtagelse: number; note: string } {
+  if (perronNy) return { oensket: Infinity, normal: 300, undtagelse: 300, note: 'Spor langs perroner på nye strækninger: ønskeligt ret spor, normal R ≥ 300 m; ingen undtagelse (2.02.2–2.02.4).' };
+  const o = { hovedspor: 700, togvejsspor: 500, sidespor: 190, firmaspor: 190 }[t];
+  const n = { hovedspor: 300, togvejsspor: 190, sidespor: 190, firmaspor: 150 }[t];
+  return { oensket: o, normal: n, undtagelse: 150, note: 'R ≥ 150 m kræver tilladelse; R < 190 m kræver sporudvidelse (2.12.2).' };
+}
+
+/** Krav til afrundingsradius R_L [m] (2.10.3). Situation: nyanlæg/ombygning/sporskifter eller eksisterende spor. */
+export function afrundingsKrav(V: number, eksisterende = false): { oensket: [number, number]; normal: number; undtagelse: number } {
+  if (V > 200) return { oensket: [40000, 40000], normal: Math.max(0.35 * V * V, 20000), undtagelse: Math.max(0.175 * V * V, 10000) };
+  return {
+    oensket: [Math.max(V * V, 10000), 40000],
+    normal: Math.max(0.35 * V * V, eksisterende ? 2000 : 5000),
+    undtagelse: Math.max(0.25 * V * V, 2000),
+  };
+}
+
+/** Mindste længde af retlinet mellemstykke mellem kurver med separate overgangskurver (2.08.2–2.08.4) [m]. */
+export function mellemstykkeKrav(V: number, dIunder40 = false): { oensket: number; normal: number; undtagelse: number } {
+  if (V > 200) return { oensket: 0.67 * V, normal: 0.67 * V, undtagelse: dIunder40 ? 0.1 * V : 0.4 * V };
+  return { oensket: Math.max(0.4 * V, 20), normal: Math.max(0.25 * V, 20), undtagelse: dIunder40 ? 0.1 * V : 0.2 * V };
+}
 
 /* ---------------- hastighedsafhængige grænser (Sporregler 2.05–2.06) ---------------- */
 
@@ -300,9 +369,8 @@ export function saveSettings(s: Settings): void {
 /* ------------------------------ sporudvidelse ------------------------------ */
 
 /**
- * Sporudvidelse i små kurver, Sporregler afsn. 2.12 (gengivet i Sporteknik 2016, s. 254).
- * Bemærk: Sporteknik skriver i teksten «kun ved R ≤ 175 m», men tabellen giver +5 mm for 175 ≤ R < 190 m.
- * SporKit følger tabellen.
+ * Sporudvidelse i små kurver, Sporregler afsn. 2.12.2 figur 4 (rettelsesblade til 01.05.2017).
+ * Fuldt til stede ved cirkelbuens startpunkt; tiltager jævnt over overgangskurven (uden overgangskurve 2,5 mm pr. 5 sveller).
  */
 export const SPORUDVIDELSE: { fra: number; til: number; mm: number }[] = [
   { fra: 190, til: Infinity, mm: 0 },

@@ -75,14 +75,18 @@ export const SPORVIDDE: Record<Kvalitetsklasse, { fk0: number; fk1: [number, num
 /**
  * Vurdér en målt sporvidde: returnerer den højeste fejlklasse, der overskrides.
  * projekteret = 1435/1437 + evt. sporudvidelse. Fodnote 5 og 10 i tabel 11.3.2-2:
- *  - plustolerancer i fk 0/1 og alle minustolerancer regnes fra den projekterede sporvidde,
+ *  - fk 0 og 1 regnes fra den projekterede sporvidde (1437 mm på ret spor og R ≥ 190 m, fodnote 10;
+ *    1435 + sporudvidelse ved R < 190 m, fodnote 5),
+ *  - minustolerancer i fk 3, 4 og Max regnes fra 1435 + sporudvidelse ved R < 190 m (fodnote 5) og ellers fra 1435 mm
+ *    (fodnote 10 omfatter kun fk 0 og 1),
  *  - plustolerancer i fk 3, 4 og Max regnes altid fra 1435 mm.
  */
 export function sporviddeKlasse(G: number, k: Kvalitetsklasse, projekteret = 1435): { fejlklasse: string; status: Status } {
-  const dP = G - projekteret; // mod projekteret
-  const d35 = G - 1435; // mod 1435
+  const dP = G - projekteret; // mod projekteret (fk 0 og 1)
+  const d35 = G - 1435; // mod 1435 (plus i fk 3, 4 og Max)
+  const dMinus = G - (projekteret > 1437 ? projekteret : 1435); // minus i fk 3, 4 og Max
   const t = SPORVIDDE[k];
-  const udHoej = (g: [number, number]) => d35 > g[0] || dP < -g[1];
+  const udHoej = (g: [number, number]) => d35 > g[0] || dMinus < -g[1];
   const udLav = (g: [number, number]) => dP > g[0] || dP < -g[1];
   if (udHoej(t.max)) return { fejlklasse: 'Max/Min', status: 'overskredet' };
   if (udHoej(t.fk4)) return { fejlklasse: '4', status: 'overskredet' };
@@ -106,16 +110,20 @@ export function vridningKlasse(v: number, k: Kvalitetsklasse, b: Base, lav: bool
 /** Tabel 11.5.2-1: projekteret ækvivalent konicitet, grænse. null = intet krav (V ≤ 60). */
 export const konicitetGraense = (V: number): number | null => (V > 200 ? 0.2 : V > 60 ? 0.25 : null);
 
-/** Tabel 11.5.2-2: beregnet projekteret konicitet, største af de 4 hjulsæt, for 60E2. */
-export function projekteretKonicitet(sporvidde: 1435 | 1437, haeldning: 20 | 40): number {
+/** Tabel 11.5.2-2: beregnet projekteret konicitet, største af de 4 hjulsæt (S1002/GV 1/40, flangekontakt 1420/1426). */
+export function projekteretKonicitet(sporvidde: 1435 | 1437, haeldning: 20 | 40, skinne: '60E1' | '60E2' = '60E2'): number {
   const t: Record<string, number[]> = {
     // S1002/1420, S1002/1426, GV/1420, GV/1426
-    '1435-20': [0.017, 0.018, 0.025, 0.025],
-    '1437-20': [0.014, 0.014, 0.025, 0.025],
-    '1435-40': [0.027, 0.095, 0.025, 0.025],
-    '1437-40': [0.028, 0.072, 0.025, 0.025],
+    '60E2-1435-20': [0.017, 0.018, 0.025, 0.025],
+    '60E2-1437-20': [0.014, 0.014, 0.025, 0.025],
+    '60E2-1435-40': [0.027, 0.095, 0.025, 0.025],
+    '60E2-1437-40': [0.028, 0.072, 0.025, 0.025],
+    '60E1-1435-20': [0.011, 0.011, 0.025, 0.025],
+    '60E1-1437-20': [0.010, 0.010, 0.025, 0.025],
+    '60E1-1435-40': [0.029, 0.187, 0.025, 0.025],
+    '60E1-1437-40': [0.030, 0.152, 0.025, 0.025],
   };
-  return Math.max(...t[`${sporvidde}-${haeldning}`]);
+  return Math.max(...t[`${skinne}-${sporvidde}-${haeldning}`]);
 }
 
 /** Afsnit 17: kurveradius fra pilhøjde på målevogns-/måledræsinediagram: R = 10 000 / p. */

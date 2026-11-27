@@ -161,7 +161,7 @@ export const overgangskurve: Module = {
           'Rampe og overgangskurve skal være sammenfaldende; den største af de to mindstelængder gælder (Sporteknik s. 250).',
           `Vridning fra rampen: ${tw.map((t) => `${fmt(t.overBase, 1)} mm/${t.b} m`).join(', ')}. Grænser jf. BN1-38.`,
         ],
-        refs: ['SR87', 'ST16', 'EN13803', 'TSI-INF', 'BN1-38'],
+        refs: ['SR87', 'ST16', 'TSI-INF', 'BN1-38'],
         figur: diagram(L, h1, st.h, I1, I2),
       });
     };

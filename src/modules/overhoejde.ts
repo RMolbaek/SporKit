@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, vurder, samletStatus, limitI, loadSettings, projekteretSporvidde, sporudvidelse } from '../core/rules';
+import { BANEDANMARK as rs, vurder, samletStatus, limitI, loadSettings, projekteretSporvidde, sporudvidelse, limitH, limitISporskifte, hMaxAfsporing, hOenskelig, type Status } from '../core/rules';
 import {
   cantConstant, equilibriumCant, cantDeficiency, cantExcess, lateralAcceleration, cantWindow, roundTo,
 } from '../core/formulas';
@@ -29,19 +29,24 @@ export const overhoejde: Module = {
       saveState('overhoejde-opt', opt);
       const set = loadSettings();
       const C = cantConstant(rs);
-      const LI = opt.sporskifte === 'ja' && st.V > 100 ? rs.manglendeOverhoejdeSporskifte : limitI(rs, st.V, set);
+      const LI = opt.sporskifte === 'ja' ? limitISporskifte(rs, st.V) : limitI(rs, st.V, set);
+      const HL = limitH(rs, { trafik: set.tsiTrafik, sporskifte: opt.sporskifte === 'ja', perron: opt.perron === 'ja' });
+      const h4a = hMaxAfsporing(st.R);
+      const s4a: Status = st.h <= h4a + 1e-9 ? 'ok' : 'overskredet';
+      const hOen = hOenskelig(st.V, st.R);
+      const sV200: Status = opt.sporskifte === 'ja' && st.V > 200 && st.h > 0 ? 'overskredet' : 'ok';
       const heq = equilibriumCant(st.V, st.R, rs);
       const heqMin = equilibriumCant(st.Vmin, st.R, rs);
       const I = cantDeficiency(st.V, st.R, st.h, rs);
       const E = cantExcess(st.Vmin, st.R, st.h, rs);
       const aq = lateralAcceleration(I, rs);
-      const sH = vurder(st.h, rs.overhoejdeMax);
+      const sH = vurder(st.h, HL);
       const sI = I > 0 ? vurder(I, LI) : 'ok';
       const sE = E > 0 ? vurder(E, rs.overskydendeOverhoejdeMax) : 'ok';
-      const total = samletStatus([sH, sI, sE]);
+      const total = samletStatus([sH, sI, sE, s4a, sV200]);
 
-      const wN = cantWindow(st.V, st.Vmin, st.R, LI.normal, rs.overskydendeOverhoejdeMax.normal, rs.overhoejdeMax.normal, rs);
-      const wU = cantWindow(st.V, st.Vmin, st.R, LI.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, rs.overhoejdeMax.undtagelse, rs);
+      const wN = cantWindow(st.V, st.Vmin, st.R, LI.normal, rs.overskydendeOverhoejdeMax.normal, HL.normal, rs);
+      const wU = cantWindow(st.V, st.Vmin, st.R, LI.undtagelse, rs.overskydendeOverhoejdeMax.undtagelse, HL.undtagelse, rs);
       let forslag = NaN;
       if (wN.muligt) {
         const lav = roundTo(wN.lav, 5, 'op');
@@ -79,11 +84,13 @@ export const overhoejde: Module = {
         </div>
         ${results([
           { symbol: 'h<sub>a</sub>', label: 'Afbalanceret overhøjde (V)', value: fmt(heq), unit: 'mm', big: true,
-            sub: `h<sub>a</sub> = ${fmt(C, 2)}·V²/R` },
+            sub: `h<sub>a</sub> = ${fmt(C, 1)}·V²/R` },
           { symbol: 'I', label: 'Overhøjdeunderskud', value: fmt(I), unit: 'mm', status: sI, big: true, sub: limitText(LI) },
           { symbol: 'E', label: 'Overhøjdeoverskud (V<sub>min</sub>)', value: fmt(E), unit: 'mm', status: sE,
             sub: limitText(rs.overskydendeOverhoejdeMax) },
-          { symbol: 'h', label: 'Valgt overhøjde', value: fmt(st.h), unit: 'mm', status: sH, sub: limitText(rs.overhoejdeMax) },
+          { symbol: 'h', label: 'Valgt overhøjde', value: fmt(st.h), unit: 'mm', status: sH, sub: limitText(HL) },
+          { symbol: 'h<sub>4a</sub>', label: 'Afsporingskrav (formel 4a)', value: `≤ ${fmt(Math.max(0, Math.floor(h4a)))}`, unit: 'mm', status: s4a, sub: 'h ≤ (R − 50)/1,5 – skal altid overholdes' },
+          { symbol: 'h<sub>ø</sub>', label: 'Ønskelig overhøjde (formel 4)', value: fmt(hOen), unit: 'mm', sub: 'h = 8·V²/R, dog højst 115 mm' },
           { symbol: 'a<sub>q</sub>', label: 'Ukompenseret sideacceleration', value: fmt(aq, 2), unit: 'm/s²',
             sub: '1,0 m/s² svarer til 153 mm' },
           { symbol: 'h<sub>a,min</sub>', label: 'Afbalanceret for V<sub>min</sub>', value: fmt(heqMin), unit: 'mm' },
@@ -128,17 +135,20 @@ export const overhoejde: Module = {
           { label: 'Skinneprofil', symbol: '', value: set.skinne, unit: '' },
         ],
         steps: [
-          { label: 'Konstant', formel: 'C = e / (g·3,6²)', indsat: `C = ${rs.kontaktafstand} / (${rs.g}·3,6²)`, resultat: fmt(C, 3) },
-          { label: 'Afbalanceret overhøjde', formel: 'h<sub>a</sub> = C·V²/R', indsat: `${fmt(C, 3)}·${st.V}²/${fmt(st.R)}`, resultat: `${fmt(heq, 1)} mm` },
+          { label: 'Konstant', formel: 'C (Sporregler formel 1)', indsat: '≈ e / (g·3,6²) = 1500 / (9,81·3,6²) = 11,798', resultat: fmt(C, 1) },
+          { label: 'Afbalanceret overhøjde', formel: 'h<sub>a</sub> = C·V²/R', indsat: `${fmt(C, 1)}·${st.V}²/${fmt(st.R)}`, resultat: `${fmt(heq, 1)} mm` },
           { label: 'Overhøjdeunderskud', formel: 'I = h<sub>a</sub> − h', indsat: `${fmt(heq, 1)} − ${st.h}`, resultat: `${fmt(I, 1)} mm` },
-          { label: 'Afbalanceret ved V<sub>min</sub>', formel: 'h<sub>a,min</sub> = C·V<sub>min</sub>²/R', indsat: `${fmt(C, 3)}·${st.Vmin}²/${fmt(st.R)}`, resultat: `${fmt(heqMin, 1)} mm` },
+          { label: 'Afbalanceret ved V<sub>min</sub>', formel: 'h<sub>a,min</sub> = C·V<sub>min</sub>²/R', indsat: `${fmt(C, 1)}·${st.Vmin}²/${fmt(st.R)}`, resultat: `${fmt(heqMin, 1)} mm` },
           { label: 'Overhøjdeoverskud', formel: 'E = h − h<sub>a,min</sub>', indsat: `${st.h} − ${fmt(heqMin, 1)}`, resultat: `${fmt(E, 1)} mm` },
           { label: 'Sideacceleration', formel: 'a<sub>q</sub> = g·I/e', indsat: `${rs.g}·${fmt(I, 1)}/${rs.kontaktafstand}`, resultat: `${fmt(aq, 3)} m/s²` },
           { label: 'Nedre grænse for h', formel: 'h ≥ h<sub>a</sub> − I<sub>max</sub>', indsat: `${fmt(heq, 1)} − ${LI.normal}`, resultat: `${fmt(Math.max(0, heq - LI.normal), 1)} mm` },
-          { label: 'Øvre grænse for h', formel: 'h ≤ min(h<sub>max</sub>; h<sub>a,min</sub> + E<sub>max</sub>)', indsat: `min(${rs.overhoejdeMax.normal}; ${fmt(heqMin, 1)} + ${rs.overskydendeOverhoejdeMax.normal})`, resultat: `${fmt(wN.hoej, 1)} mm` },
+          { label: 'Øvre grænse for h', formel: 'h ≤ min(h<sub>max</sub>; h<sub>a,min</sub> + E<sub>max</sub>; (R − 50)/1,5)', indsat: `min(${HL.normal}; ${fmt(heqMin, 1)} + ${rs.overskydendeOverhoejdeMax.normal}; ${fmt(h4a, 1)})`, resultat: `${fmt(wN.hoej, 1)} mm` },
+          { label: 'Ønskelig overhøjde', formel: 'h = 8·V²/R ≤ 115 mm (formel 4)', indsat: `8·${st.V}²/${fmt(st.R)}`, resultat: `${fmt(hOen, 1)} mm` },
         ],
         checks: [
-          { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: graense(rs.overhoejdeMax), status: sH, kilde: kildeTekst(rs.overhoejdeMax) },
+          { label: HL.label, value: `${fmt(st.h)} mm`, graense: graense(HL), status: sH, kilde: kildeTekst(HL) },
+          { label: 'Afsporingskrav h ≤ (R − 50)/1,5', value: `${fmt(st.h)} mm`, graense: `≤ ${fmt(h4a, 1)} mm`, status: s4a, kilde: 'SR87 afsn. 2.03.3 formel (4a)' },
+          ...(opt.sporskifte === 'ja' && st.V > 200 ? [{ label: 'Sporskifte ved 200 < V ≤ 250 km/t', value: `h = ${fmt(st.h)} mm`, graense: 'ret spor uden overhøjde', status: sV200, kilde: 'SR87 afsn. 2.03.6' }] : []),
           { label: 'Overhøjdeunderskud I', value: `${fmt(I, 1)} mm`, graense: graense(LI), status: sI, kilde: kildeTekst(LI) },
           { label: 'Overhøjdeoverskud E', value: `${fmt(E, 1)} mm`, graense: graense(rs.overskydendeOverhoejdeMax), status: sE, kilde: kildeTekst(rs.overskydendeOverhoejdeMax) },
           ...bnRows.map((r) => ({ ...r, label: `BN1-38: ${r.label}` })),
@@ -146,7 +156,7 @@ export const overhoejde: Module = {
         ],
         noter: [
           wN.muligt ? `Tilladt interval (normal): ${fmt(wN.lav)}–${fmt(wN.hoej)} mm. Forslag: h = ${fmt(forslag)} mm.` : 'Der findes intet tilladt overhøjdeinterval efter normalbestemmelserne.',
-          'Lavere overhøjde kan være krævet ved perroner, overkørsler og hvor tog skal holde stille (Sporregler afsn. 2.03).',
+          'Overhøjdegrænser efter situation (2.03.4–2.03.5): stenballast 160 mm (undt. 180 mm kun for spor reserveret persontrafik), sporskifter 120/160 mm, grusballast 80 mm, langs perroner 60/110 mm. Overkørsler: højst 40 mm på ret spor (2.03.8).',
         ],
         refs: ['SR87', 'ST16', 'EN13803', ...(opt.sporskifte === 'ja' ? ['BN1-14'] : []), 'BN1-6', 'BN1-38', ...(tsiRows.length ? ['TSI-INF'] : [])],
         figur: fig,
@@ -165,8 +175,8 @@ export const overhoejde: Module = {
       update,
     );
     f.append(
-      select('Krumt sporskifte (vigespor / U-krumt)', 'sporskifte', [['nej', 'Nej – almindeligt spor'], ['ja', 'Ja – I ≤ 80 mm ved V > 100']], opt, update),
-      select('Perron hvor tog standser (TSI: h ≤ 110 mm)', 'perron', [['nej', 'Nej'], ['ja', 'Ja']], opt, update),
+      select('Sporskifte (krumt / i kurve)', 'sporskifte', [['nej', 'Nej – almindeligt spor'], ['ja', 'Ja – h ≤ 120 mm, I ≤ 100/80 mm']], opt, update),
+      select('Langs perron', 'perron', [['nej', 'Nej'], ['ja', 'Ja – h ≤ 60 mm (undt. 110 mm)']], opt, update),
       select('Svelle i tegning', 'svelle', [['S99', 'S99 (Dmp)'], ['S16', 'S16 (Dme)']], opt, update),
     );
     root.append(h('div', { class: 'grid' }, card('Input', f, 'card-input'), card('Resultat', out, 'card-out')));

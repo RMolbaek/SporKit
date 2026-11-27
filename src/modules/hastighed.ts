@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, limitI, loadSettings, iUndtagelse } from '../core/rules';
+import { BANEDANMARK as rs, limitI, loadSettings, iUndtagelse, limitH, hMaxAfsporing } from '../core/rules';
 import { setReport } from '../core/report';
 import { tsiCantDeficiency, tsiCantMax, tsiStatus, TSI_KILDE } from '../core/tsi';
 import { maxSpeed, roundTo, equilibriumCant, cantConstant } from '../core/formulas';
@@ -54,11 +54,14 @@ export const hastighed: Module = {
       saveState('hastighed', st);
       const set = loadSettings();
       const V = maxSpeed(st.R, st.h, st.I, rs);
-      const Vn = maxSpeed(st.R, Math.min(st.h, rs.overhoejdeMax.normal), rs.manglendeOverhoejdeMax.normal, rs);
+      const HL = limitH(rs, { trafik: set.tsiTrafik });
+      const h4a = hMaxAfsporing(st.R);
+      const Voen = Math.sqrt((Math.min(st.h, 115) * st.R) / 8); // formel (12)
+      const Vn = maxSpeed(st.R, Math.min(st.h, HL.normal, h4a), rs.manglendeOverhoejdeMax.normal, rs);
       // Undtagelsesværdien for I afhænger af V: prøv 153 mm (V > 140) og fald tilbage til 130 mm
       let Iu = iUndtagelse(250, set);
-      let Vu = maxSpeed(st.R, Math.min(st.h, rs.overhoejdeMax.undtagelse), Iu, rs);
-      if (Vu <= 140 || iUndtagelse(Vu, set) !== Iu) { Iu = iUndtagelse(Math.min(Vu, 140), set); Vu = maxSpeed(st.R, Math.min(st.h, rs.overhoejdeMax.undtagelse), Iu, rs); }
+      let Vu = maxSpeed(st.R, Math.min(st.h, HL.undtagelse, h4a), Iu, rs);
+      if (Vu <= 140 || iUndtagelse(Vu, set) !== Iu) { Iu = iUndtagelse(Math.min(Vu, 140), set); Vu = maxSpeed(st.R, Math.min(st.h, HL.undtagelse, h4a), Iu, rs); }
       const C = cantConstant(rs);
       const hT = Math.min(st.h, tsiCantMax(set.tsiTrafik, set.tsiSpor));
       let Vtsi = maxSpeed(st.R, hT, tsiCantDeficiency(300), rs);
@@ -68,7 +71,8 @@ export const hastighed: Module = {
         { label: 'Overhøjde', value: `${fmt(st.h)} mm`, graense: `≤ ${tsiCantMax(set.tsiTrafik, set.tsiSpor)} mm`, status: tsiStatus(st.h <= tsiCantMax(set.tsiTrafik, set.tsiSpor)), kilde: `${TSI_KILDE} 4.2.4.2, tabel 7` },
         { label: `Største hastighed efter TSI (I = ${tsiCantDeficiency(Vtsi)} mm)`, value: `${fmt(Math.floor(Vtsi / 5) * 5)} km/t`, graense: `beregnet ${fmt(Vtsi, 1)} km/t`, status: 'ok' as const, kilde: `${TSI_KILDE} 4.2.4.3` },
       ] : [];
-      const Vmaxh = maxSpeed(st.R, rs.overhoejdeMax.normal, rs.manglendeOverhoejdeMax.normal, rs);
+      const hMaxMulig = Math.min(HL.normal, h4a);
+      const Vmaxh = maxSpeed(st.R, hMaxMulig, rs.manglendeOverhoejdeMax.normal, rs);
       out.innerHTML = `
         <div class="summary summary-ok">
           <div><strong>Største hastighed</strong><span>afrundet ned til 5 km/t</span></div>
@@ -76,10 +80,11 @@ export const hastighed: Module = {
         </div>
         ${results([
           { symbol: 'V', label: 'Beregnet (valgt h og I)', value: fmt(V, 1), unit: 'km/t', big: true,
-            sub: `V = √(R·(h + I) / ${fmt(C, 2)})` },
+            sub: `V = √(R·(h + I) / ${fmt(C, 1)})` },
           { symbol: 'V<sub>n</sub>', label: `Normal (I = ${rs.manglendeOverhoejdeMax.normal} mm)`, value: fmt(roundTo(Vn, 5, 'ned')), unit: 'km/t', status: 'ok' },
           { symbol: 'V<sub>u</sub>', label: `Undtagelse (I = ${Iu} mm)`, value: fmt(roundTo(Vu, 5, 'ned')), unit: 'km/t', status: 'undtagelse' },
-          { symbol: 'V<sub>h,max</sub>', label: `Hvis h øges til ${rs.overhoejdeMax.normal} mm (I = 100)`, value: fmt(roundTo(Vmaxh, 5, 'ned')), unit: 'km/t' },
+          { symbol: 'V<sub>ø</sub>', label: 'Ønskelig hastighed (formel 12)', value: fmt(roundTo(Voen, 5, 'ned')), unit: 'km/t', sub: 'V = √(h·R/8)' },
+          { symbol: 'V<sub>h,max</sub>', label: `Hvis h øges til ${fmt(Math.floor(hMaxMulig))} mm (I = 100)`, value: fmt(roundTo(Vmaxh, 5, 'ned')), unit: 'km/t' },
           { symbol: 'h<sub>eq</sub>', label: 'Afbalanceret overhøjde ved V', value: fmt(equilibriumCant(roundTo(V, 5, 'ned'), st.R, rs)), unit: 'mm' },
         ])}
         ${tsiBlock(tsiRows, 'TSI tillader I ≤ 153 mm for materiel efter TSI LOC&PAS (V ≤ 300 km/t). Banedanmarks normalbestemmelse er 100 mm, så den danske grænse er normalt den styrende.')}
@@ -94,14 +99,16 @@ export const hastighed: Module = {
           { label: 'Tilladt overhøjdeunderskud', symbol: 'I', value: fmt(st.I), unit: 'mm' },
         ],
         steps: [
-          { label: 'Største hastighed', formel: 'V = √(R·(h + I)/C)', indsat: `√(${fmt(st.R)}·(${st.h} + ${st.I})/${fmt(C, 3)})`, resultat: `${fmt(V, 1)} km/t` },
+          { label: 'Største hastighed', formel: 'V = √(R·(h + I)/C)', indsat: `√(${fmt(st.R)}·(${st.h} + ${st.I})/${fmt(C, 1)})`, resultat: `${fmt(V, 1)} km/t` },
           { label: 'Afrundet ned til 5 km/t', formel: '', indsat: '', resultat: `${fmt(roundTo(V, 5, 'ned'))} km/t` },
-          { label: 'Normal (I = 100 mm)', formel: 'V = √(R·(h + 100)/C)', indsat: `√(${fmt(st.R)}·(${Math.min(st.h, rs.overhoejdeMax.normal)} + 100)/${fmt(C, 3)})`, resultat: `${fmt(Vn, 1)} km/t` },
-          { label: `Undtagelse (I = ${Iu} mm)`, formel: `V = √(R·(h + ${Iu})/C)`, indsat: `√(${fmt(st.R)}·(${Math.min(st.h, rs.overhoejdeMax.undtagelse)} + ${Iu})/${fmt(C, 3)})`, resultat: `${fmt(Vu, 1)} km/t` },
+          { label: 'Normal (I = 100 mm)', formel: 'V = √(R·(h + 100)/C) (formel 13)', indsat: `√(${fmt(st.R)}·(${fmt(Math.min(st.h, HL.normal, h4a), 1)} + 100)/${fmt(C, 1)})`, resultat: `${fmt(Vn, 1)} km/t` },
+          { label: 'Ønskelig hastighed', formel: 'V = √(h·R/8) (formel 12)', indsat: `√(${fmt(Math.min(st.h, 115))}·${fmt(st.R)}/8)`, resultat: `${fmt(Voen, 1)} km/t` },
+          { label: `Undtagelse (I = ${Iu} mm)`, formel: `V = √(R·(h + ${Iu})/C)`, indsat: `√(${fmt(st.R)}·(${fmt(Math.min(st.h, HL.undtagelse, h4a), 1)} + ${Iu})/${fmt(C, 1)})`, resultat: `${fmt(Vu, 1)} km/t` },
         ],
         checks: [
-          { label: 'Valgt I mod grænse', value: `${fmt(st.I)} mm`, graense: `≤ ${LIu.normal} / ${LIu.undtagelse} mm`, status: st.I <= LIu.normal ? 'ok' : st.I <= LIu.undtagelse ? 'undtagelse' : 'overskredet', kilde: 'SR87 afsn. 2.03 · sekundær' },
-          { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: `≤ ${rs.overhoejdeMax.normal} / ${rs.overhoejdeMax.undtagelse} mm`, status: st.h <= rs.overhoejdeMax.normal ? 'ok' : st.h <= rs.overhoejdeMax.undtagelse ? 'undtagelse' : 'overskredet', kilde: 'SR87 afsn. 2.03 · sekundær' },
+          { label: 'Valgt I mod grænse', value: `${fmt(st.I)} mm`, graense: `≤ ${LIu.normal} / ${LIu.undtagelse} mm`, status: st.I <= LIu.normal ? 'ok' : st.I <= LIu.undtagelse ? 'undtagelse' : 'overskredet', kilde: 'SR87 afsn. 2.03.4–2.03.5' },
+          { label: 'Overhøjde h', value: `${fmt(st.h)} mm`, graense: `≤ ${HL.normal} / ${HL.undtagelse} mm`, status: st.h <= HL.normal ? 'ok' : st.h <= HL.undtagelse ? 'undtagelse' : 'overskredet', kilde: 'SR87 afsn. 2.03.4–2.03.5' },
+          { label: 'Afsporingskrav h ≤ (R − 50)/1,5', value: `${fmt(st.h)} mm`, graense: `≤ ${fmt(h4a, 1)} mm`, status: st.h <= h4a + 1e-9 ? 'ok' : 'overskredet', kilde: 'SR87 afsn. 2.03.3 formel (4a)' },
           ...tsiRows.map((r) => ({ ...r, label: `TSI: ${r.label}` })),
         ],
         refs: ['SR87', 'ST16', ...(tsiRows.length ? ['TSI-INF'] : [])],
