@@ -6,6 +6,7 @@ import { byggLinjefoering, cantVed, dVed, hPunkt, stationVed, type Linjefoering 
 import { BN16_STANDARD, byggModel, DEL_TEKST, dhRvVed, eVed, foreslaaOrigo, kmTxt, type Bn16Valg, type Del, type Model, type ModelValg } from '../core/ifcmodel';
 import { CRS, FARVE, skrivIfc, SKEMA_NOTE, SKEMA_TEKST, type IfcSkema } from '../core/ifc';
 import { zip } from '../core/zip';
+import { skrivDxf } from '../core/dxf';
 import { FALD_TEKST, SVELLE_DATA, type Fald, type Projekt as BnProjekt, type Svelletype } from '../core/bn16';
 import type { ProfilNavn } from '../core/fritrum';
 import { setReport, type ReportCheck } from '../core/report';
@@ -222,13 +223,18 @@ export const ifc: Module = {
       // Eksport
       left.append(h('div', { class: 'ed-sec' }, 'Eksport'));
       left.append(valg('Fritrum i IFC 4.3 som', 'fritrumKlasse', [['virtual', 'IfcVirtualElement (CLEARANCE)'], ['proxy', 'IfcBuildingElementProxy']]));
-      left.append(h('div', { class: 'ifc-cbs' }, chk('Komprimér som ifcZIP', 'zip')));
+      left.append(h('div', { class: 'ifc-cbs' }, chk('Komprimér (ifcZIP / zip)', 'zip')));
       const eks = h('div', { class: 'ifc-eks' });
       for (const sk of ['IFC4X3_ADD2', 'IFC4', 'IFC2X3'] as IfcSkema[]) {
         const btn = h('button', { type: 'button', class: sk === 'IFC4X3_ADD2' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm' }, `Hent ${SKEMA_TEKST[sk]}`);
         btn.title = SKEMA_NOTE[sk];
         btn.addEventListener('click', () => eksporter(sk, btn));
         eks.append(h('div', { class: 'ifc-eks-r' }, btn, h('small', {}, SKEMA_NOTE[sk])));
+      }
+      {
+        const btn = h('button', { type: 'button', class: 'btn-ghost btn-sm' }, 'Hent DXF (AutoCAD/Civil 3D/MicroStation)');
+        btn.addEventListener('click', () => eksporterDxf(btn));
+        eks.append(h('div', { class: 'ifc-eks-r' }, btn, h('small', {}, 'Åbent CAD-format (R12) med lag pr. del, 3D-mesh, linjeføring, fritrumssnit og km-tekster i globale koordinater. Åbn i AutoCAD og gem som DWG.')));
       }
       left.append(eks);
       if (eksportInfo) left.append(h('p', { class: 'tip' }, eksportInfo));
@@ -246,8 +252,30 @@ export const ifc: Module = {
         d0: kmTilD(st.fra, 0), d1: kmTilD(st.til, l.laengde), trin: Math.max(0.5, Math.min(50, st.trin || 5)),
         profil: st.profil, tillaeg: st.tillaeg, bredde: st.bredde, hoejde: st.hoejde, overhoejde: st.overhoejde,
         afrundE: st.afrundE, afrundRv: st.afrundRv, skinner: st.skinner, ballast: st.ballast, sveller: st.sveller, daemning: st.daemning,
-        bn16: bn16FraTvaerprofil().v, maxObjekt: Math.max(20, st.maxObjekt || 250), origo,
+        bn16: bn16FraTvaerprofil().v, maxObjekt: Math.max(20, st.maxObjekt || 250), origo, ringe: true,
       };
+    };
+
+    const eksporterDxf = async (btn: HTMLButtonElement) => {
+      if (!model || !lf) return;
+      const t0 = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Genererer …';
+      await new Promise((r) => setTimeout(r, 20));
+      try {
+        const ak = aktivKilde();
+        const filnavn = `${slug(ak?.id === 'fil' ? `${p?.navn || 'SporKit'}_${lf.navn}` : lf.navn)}.dxf`;
+        const t = skrivDxf(model, lf);
+        if (st.zip) {
+          const z = await zip([{ navn: filnavn, data: new TextEncoder().encode(t) }]);
+          download(filnavn.replace(/\.dxf$/, '.zip'), z, 'application/zip');
+          eksportInfo = `Hentet ${filnavn.replace(/\.dxf$/, '.zip')} – ${mb(z.length)} (DXF ukomprimeret ${mb(t.length)}).`;
+        } else {
+          download(filnavn, t, 'application/dxf');
+          eksportInfo = `Hentet ${filnavn} – ${mb(t.length)}.`;
+        }
+      } catch (e) { eksportInfo = `Eksporten fejlede: ${(e as Error).message}`; }
+      btn.disabled = false; btn.textContent = t0;
+      renderLeft();
     };
 
     const eksporter = async (sk: IfcSkema, btn: HTMLButtonElement) => {

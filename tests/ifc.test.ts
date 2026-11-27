@@ -287,3 +287,56 @@ describe('Tillæg målt på modellens geometri', () => {
     expect(Math.max(...m.snit.map((x) => x.dhRv))).toBeCloseTo(83.333, 3);
   });
 });
+
+describe('BN1-166-1 fig. 12-2 – 12-7: overgange for kurvetillæg', () => {
+  const el: Element[] = [];
+  let km = 0;
+  const add = (type: Element['type'], L: number, R0: number, R1: number) => { el.push({ type, km0: km, km1: km + L, L, R0, R1, h0: 0, h1: 0 }); km += L; };
+  // ret, R270 uden OK, ret, OK→R200→OK, 8 m ret, modkurve R220 uden OK, ret, R300→R260→R240 sammensat, ret
+  add('ret', 100, 0, 0); add('kurve', 60, -270, -270); add('ret', 100, 0, 0);
+  add('overgang', 40, 0, 200); add('kurve', 50, 200, 200); add('overgang', 40, 200, 0); add('ret', 8, 0, 0);
+  add('kurve', 50, -220, -220); add('ret', 50, 0, 0); add('kurve', 40, 300, 300); add('kurve', 40, 260, 260); add('kurve', 40, 240, 240); add('ret', 100, 0, 0);
+  const l = byggLinjefoering('overgange', el);
+  const E270 = 3750 / 270, E200 = 60000 / 200 - 225, E220 = 60000 / 220 - 225, E260 = 3750 / 260, E240 = 60000 / 240 - 225;
+  it('12-2: ret → R > 250 m – fuldt tillæg i begyndelsespunktet (spring)', () => {
+    expect(eVed(l, 99.9)).toBe(0);
+    expect(eVed(l, 100)).toBeCloseTo(E270, 9);
+    expect(eVed(l, 160)).toBeCloseTo(E270, 9);
+    expect(eVed(l, 160.1)).toBe(0);
+  });
+  it('12-6: med overgangskurve – lineært fra OK-start til fuld værdi i hovedkurvens BP', () => {
+    expect(eVed(l, 260)).toBe(0);
+    expect(eVed(l, 280)).toBeCloseTo(E200 / 2, 9);
+    expect(eVed(l, 300)).toBeCloseTo(E200, 9);
+    expect(eVed(l, 370)).toBeCloseTo(E200 / 2, 9);
+  });
+  it('12-3: R ≤ 250 m uden OK efter kort ret – rampe fra 12 m før BP (også ind over forrige OK)', () => {
+    const b = E200 * (390 - 386) / 40;
+    expect(eVed(l, 386)).toBeCloseTo(b, 9);
+    expect(eVed(l, 391)).toBeCloseTo(Math.max(E200 * (390 - 391) / 40, 0) + (E220 - 0) * (391 - 386) / 10, 9);
+    expect(eVed(l, 396)).toBeCloseTo(E220, 9);
+    expect(eVed(l, 455)).toBeCloseTo(E220 / 2, 9);
+  });
+  it('12-4 og 12-5: sammensatte kurver', () => {
+    expect(eVed(l, 537.9)).toBe(0); // R300 rundet ned til 0
+    expect(eVed(l, 538)).toBeCloseTo(E260, 9); // til stede i tangentpunktet
+    expect(eVed(l, 571)).toBeCloseTo((E260 + E240) / 2, 9); // fra e1 12 m før til e2 2 m før TP
+    expect(eVed(l, 576)).toBeCloseTo(E240, 9);
+    expect(eVed(l, 625)).toBeCloseTo(E240 / 2, 9);
+  });
+});
+
+import { skrivDxf } from '../src/core/dxf';
+describe('DXF-eksport', () => {
+  it('R12 med lag, polyface-mesh og globale koordinater', () => {
+    const m = byggModel(lf, valg({ ringe: true }));
+    const t = skrivDxf(m, lf);
+    const linjer = t.split('\r\n');
+    expect(linjer[linjer.length - 2]).toBe('EOF');
+    expect(t).toContain('AC1009');
+    for (const l of ['SPORKIT_FRITRUM', 'SPORKIT_SKINNE', 'SPORKIT_LINJEFOERING', 'SPORKIT_KM']) expect(t).toContain(l);
+    expect((t.match(/\r\n0\r\nPOLYLINE\r\n/g) ?? []).length).toBe(m.objekter.length + 1 + m.snit.length);
+    expect(t).toContain('\r\n10\r\n575000.0000\r\n20\r\n6150000.0000\r\n30\r\n20.0000\r\n');
+    expect(/[^\x00-\x7f]/.test(t)).toBe(false);
+  });
+});

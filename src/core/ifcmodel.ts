@@ -110,8 +110,10 @@ export function eVed(lf: Linjefoering, d: number, afrund = true, adv?: Set<strin
   if (forrige && Math.abs(forrige.d0 + forrige.L - d) < 1e-6) b0 = Math.max(b0, base(p.i - 1, d));
   let e = b0;
   // Kurver med R ≤ 250 m uden overgangskurve: lineært fra 12 m før til fuld værdi 2 m før BP (fig. 12-3 og 12-5)
-  for (let j = Math.max(0, p.i - 2); j <= Math.min(lf.h.length - 1, p.i + 2); j++) {
+  // (alle kurver inden for 12 m – også når der ligger flere korte elementer imellem)
+  for (let j = 0; j < lf.h.length; j++) {
     const s = lf.h[j];
+    if (s.d0 - 12 > d || s.d0 + s.L + 12 < d) continue;
     if (s.type !== 'kurve' || Math.abs(s.R0) > 250) continue;
     const ej = eAfR(s.R0, afrund);
     if (ej <= 0) continue;

@@ -136,6 +136,27 @@ Største afvigelse er 0,07 mm, dvs. koordinaternes afrunding. En regressionstest
 
 🔧 Fundet og rettet: Præcis i det fælles tangentpunkt mellem to kurver uden overgangskurve (R 200 → 280 m) blev den største kurves e brugt. Nu bruges det største tillæg (figur 12-4/12-5).
 
+**Overgange for kurvetillægget, kontrolleret mod figurerne i BN1-166-1 (side 28–29).** Endnu en test-LandXML er målt på samme måde. Den indeholder:
+- ret → R 270 m uden overgangskurve
+- ret → overgangskurve → R 200 m → overgangskurve
+- 8 m ret → modkurve R 220 m uden overgangskurve
+- sammensatte kurver R 300 → 260 → 240 m
+
+Alle 719 tværsnit stemmer:
+
+| Figur | Regel | Status |
+|---|---|---|
+| 12-2 | R > 250 m: fuldt tillæg i kurvens begyndelsespunkt (spring) | ✅ |
+| 12-3 | R ≤ 250 m uden overgangskurve: lineært fra 12 m til fuld værdi 2 m før BP – også når rampen rækker ind i en foregående overgangskurve | ✅ |
+| 12-4 | To kurver > 250 m: tillægget er til stede i det fælles tangentpunkt | ✅ |
+| 12-5 | Ind i den mindste kurve (≤ 250 m): fra e₁ 12 m før til e₂ 2 m før tangentpunktet | ✅ |
+| 12-6 / 12-7 | Lineært over overgangskurven | ✅ |
+| Udgang af kurve | Figurerne viser kun indgangen. SporKit spejler reglerne ved udgangen, da tog kører begge veje | ⚠️ |
+
+🔧 Rampen for R ≤ 250 m søges nu efter afstand (alle kurver inden for 12 m) i stedet for kun to elementer frem og tilbage.
+
+**DXF:** DXF-eksporten (R12) er valideret med ezdxf: 0 fejl, globale koordinater, og volumenerne er de samme som i IFC.
+
 **Linjeføring:**
 - Klotoider integreres numerisk (Simpson, højst 1 m mellem knudepunkter).
 - Elementerne forankres i filens start-koordinater og -retninger.
