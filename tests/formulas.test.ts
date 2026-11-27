@@ -42,10 +42,11 @@ describe('blandet trafik', () => {
 describe('overgangskurve', () => {
   it('kriterier skalerer med V', () => {
     const c = transitionLengths({ V: 160, R: 1500, dh: 100, dI: 67 }, rs);
-    const rampe = c.find((x) => x.id === 'rampe')!;
-    expect(rampe.normal).toBeCloseTo(160, 6); // 100 mm · 10 · 160 / 1000
+    expect(c.find((x) => x.id === 'min')!.normal).toBe(20);
     const dhdt = c.find((x) => x.id === 'dhdt')!;
-    expect(dhdt.normal).toBeCloseTo((160 / 3.6) * 100 / 28, 6);
+    expect(dhdt.normal).toBeCloseTo((160 / 3.6) * 100 / 50, 6); // SR87 formel (25)
+    expect(dhdt.undtagelse).toBeCloseTo((160 / 3.6) * 100 / 70, 6); // formel (26a)
+    expect(c.find((x) => x.id === 'dIdt')!.undtagelse).toBeCloseTo((160 / 3.6) * 67 / 90, 6); // formel (18)
   });
   it('klotoide: p ≈ L²/24R', () => {
     const g = clothoid(1000, 100, 100);
@@ -655,5 +656,58 @@ describe('Projekt: import og hastighedsprofil', () => {
     // dI/dt i overgangen: ved V = VtN overholdes normalgrænsen
     const dIdt = vaerdierVed(elementer[1], a[1].VtN, 80, DEFAULT_SETTINGS).vaerdier.find((v) => v.symbol === 'dI/dt')!;
     expect(dIdt.status).toBe('ok');
+  });
+});
+
+import { samletSpor, tilstandVed, kontrolPunkt, tavlerFraElementer, sammenlignTavler } from '../src/core/tilslutning';
+import { limitFiktivtRyk, fiktivtRyk, limitDhdt, limitDIdt } from '../src/core/rules';
+
+describe('Sporregler 2017: grænser', () => {
+  it('dh/dt, dI/dt og fiktivt ryk', () => {
+    expect([limitDhdt(BANEDANMARK, 160).normal, limitDhdt(BANEDANMARK, 160).undtagelse, limitDhdt(BANEDANMARK, 220).undtagelse]).toEqual([50, 70, 60]);
+    expect([limitDIdt(BANEDANMARK, 160).normal, limitDIdt(BANEDANMARK, 160).undtagelse, limitDIdt(BANEDANMARK, 220).normal]).toEqual([55, 90, 50]);
+    expect(fiktivtRyk(100, 72)).toBeCloseTo(100, 9); // ΔI·V/(3,6·20)
+    expect(limitFiktivtRyk(160, 'hovedspor').undtagelse).toBe(135);
+    expect(limitFiktivtRyk(160, 'oevrige').normal).toBe(71);
+  });
+});
+
+describe('Tilslutning og tracétavler', () => {
+  const t = parseTabel(EKSEMPEL_CSV);
+  const eks = elementerFraTabel(t, { felter: gaetFelter(t.header), kmEnhed: 'auto', positiv: 'hoejre' }).elementer;
+  // Projekt: tilslutter inde i buen R = 800 (km 12+700), afkorter den og går ud på nyt ret spor til km 13+300
+  const proj = [
+    { type: 'kurve' as const, km0: 12700, km1: 12780, L: 80, R0: 800, R1: 800, h0: 120, h1: 120 },
+    { type: 'overgang' as const, km0: 12780, km1: 12930, L: 150, R0: 800, R1: 0, h0: 120, h1: 0 },
+    { type: 'ret' as const, km0: 12930, km1: 13300, L: 370, R0: 0, R1: 0, h0: 0, h1: 0 },
+  ];
+  const tl = { start: 12700, slutProj: 13300, slutEks: 13300 };
+  it('samlet spor slår buen sammen og afkorter den', () => {
+    const s = samletSpor(eks, proj, tl);
+    const bue = s.find((e) => e.type === 'kurve' && e.R0 === 800)!;
+    expect(bue.L).toBeCloseTo(230, 9);
+    expect(bue.kilde).toBe('samlet');
+  });
+  it('kontrol i tilslutningspunktet', () => {
+    const k = kontrolPunkt('Start', 12700, tilstandVed(eks, 12700, 'foer'), tilstandVed(proj, 12700, 'efter'), 120, 'hovedspor', { ind: 'eks', ud: 'proj' });
+    expect(k.status).toBe('ok');
+    expect(k.noter.some((n) => n.includes('K-tavlen'))).toBe(true);
+    // anden radius og anden overhøjde → spring og forkert overhøjde
+    const p2 = [{ ...proj[0], R0: 700, R1: 700, h0: 110, h1: 110 }];
+    const k2 = kontrolPunkt('Start', 12700, tilstandVed(eks, 12700, 'foer'), tilstandVed(p2, 12700, 'efter'), 120, 'hovedspor', { ind: 'eks', ud: 'proj' });
+    expect(k2.checks[0].status).toBe('overskredet');
+    expect(k2.checks.some((c) => c.label.startsWith('Fiktivt ryk'))).toBe(true);
+  });
+  it('K-tavlen uden for projektet skal rettes (Kvl 300 → 230)', () => {
+    const gamle = tavlerFraElementer(eks).tavler;
+    const nye = tavlerFraElementer(samletSpor(eks, proj, tl)).tavler;
+    const r = sammenlignTavler(nye, gamle, tl);
+    const k = r.find((x) => Math.abs(x.km - 12550) < 0.01 && x.ny?.symbol === 'K')!;
+    expect(k.status).toBe('rettes');
+    expect(k.gammel!.kvl).toBe('300');
+    expect(k.ny!.kvl).toBe('230');
+    expect(r.find((x) => Math.abs(x.km - 12400) < 0.01)!.status).toBe('uaendret');
+    expect(r.filter((x) => x.status === 'udgaar').length).toBeGreaterThanOrEqual(2);
+    expect(r.filter((x) => x.status === 'ny').length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -36,9 +36,10 @@ export const REFERENCES: Reference[] = [
     udgiver: 'DSB / Banedanmark',
     type: 'Regelsæt',
     anvendelse:
-      'Primær kilde for linjeføring: cirkelbuer (2.02), overhøjde (2.03), hastighed (2.04), overgangskurver (2.05), overhøjderamper (2.06), sammenstødende kurver (2.07–2.08) og længdeprofil (2.10).',
-    gennemgaaet: false,
-    adgang: 'ikke-fundet',
+      'Primær kilde for linjeføring: cirkelbuer (2.02), overhøjde (2.03), hastighed (2.04), overgangskurver og fiktivt ryk (2.05, tillæg 2C), overhøjderamper (2.06), sammenstødende kurver (2.07–2.08) og længdeprofil (2.10). Konsolideret udgave med rettelsesblade til 01.05.2017.',
+    url: 'https://www.bane.dk/-/media/Bane/Dokumenter/Leverandoer/Teknisk-dokumentation/Tekniske-normer-og-regler/Vigtige-regelvaerker/SPORREGLER-1987_20170501.pdf',
+    gennemgaaet: true,
+    adgang: 'aaben',
   },
   {
     id: 'ST16',

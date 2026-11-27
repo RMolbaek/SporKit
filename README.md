@@ -6,7 +6,7 @@
 
 | Gruppe | Modul | Beregner |
 |---|---|---|
-| Projekt | **Projekt og hastighedsprofil** | Projekter gemt i browseren (eksport/import som fil). Import af spordataliste og geometrirapport (CSV/TXT med kolonnegenkendelse eller LandXML). Hastighedsprofil pr. element og kurvegruppe med h, I, E, a<sub>q</sub>, dh/dt, dI/dt og rampe, diagram over hastighed, krumning og overhøjde |
+| Projekt | **Projekt og hastighedsprofil** | Projekter gemt i browseren (eksport/import som fil). Import af spordataliste og geometrirapport (CSV/TXT med kolonnegenkendelse eller LandXML). Hastighedsprofil pr. element og kurvegruppe med h, I, E, a<sub>q</sub>, dh/dt, dI/dt, rampe og fiktivt ryk ved spring uden overgangskurve, diagram over hastighed, krumning og overhøjde. Tilslutning af projekt til eksisterende spor: kontrol af overhøjde og fiktivt ryk i tilslutningspunkterne, samlet spor og tracétavler (BN2-93) med liste over tavler, der er nye, udgår eller skal rettes uden for projektets grænser (CSV) |
 | Linjeføring | **Overhøjde** | h<sub>a</sub>, I, E, a<sub>q</sub>, tilladt overhøjdeinterval, krumme sporskifter, tværprofil i ægte skala |
 | | **Overgangskurve og rampe** | Mindste længde (dh/dt, dI/dt, rampe, stejleste rampe), også mellem ensvendte buer; klotoide, vridning fra rampe |
 | | **Mindste radius** | R<sub>min</sub> for valgt h og I og ved blandet trafik |

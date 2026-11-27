@@ -76,9 +76,9 @@ export const BANEDANMARK: RuleSet = {
     normal: 160,
     undtagelse: 180,
     unit: 'mm',
-    note: 'Sporregler afsn. 2.03. Lavere grænser kan gælde ved perroner, overkørsler og hvor tog skal holde stille.',
-    kilde: ['SR87 afsn. 2.03', 'ST16 s. 244'],
-    status: 'sekundaer',
+    note: 'Stenballasterede spor h ≤ 160 mm (formel 7a); undtagelse 180 mm for spor reserveret persontrafik. Sporskifter 120/160 mm, grusballast 80 mm, langs perroner 60/110 mm (formel 6–8).',
+    kilde: ['SR87 afsn. 2.03.4–2.03.5', 'ST16 s. 244'],
+    status: 'verificeret',
   },
   manglendeOverhoejdeMax: {
     label: 'Overhøjdeunderskud I',
@@ -87,8 +87,8 @@ export const BANEDANMARK: RuleSet = {
     unit: 'mm',
     note:
       'Undtagelse afhænger af skinne og hastighed: 60E2/DSB60 (A ≤ 22,5 t): 130 mm for V ≤ 140, 153 mm for 140 < V ≤ 250, særlige togsæt 160 mm. DSB45: 130 mm.',
-    kilde: ['SR87 afsn. 2.03', 'ST16 s. 244'],
-    status: 'sekundaer',
+    kilde: ['SR87 afsn. 2.03.4–2.03.5', 'ST16 s. 244'],
+    status: 'verificeret',
   },
   manglendeOverhoejdeSporskifte: {
     label: 'I i krumme sporskifter (V > 100 km/t)',
@@ -101,49 +101,54 @@ export const BANEDANMARK: RuleSet = {
   },
   overskydendeOverhoejdeMax: {
     label: 'Overhøjdeoverskud E',
-    normal: 70,
+    normal: 110,
     undtagelse: 110,
     unit: 'mm',
-    note: 'Langsomt kørende tog (typisk gods). Værdi ikke fundet i dansk kilde – kontrollér mod Sporregler afsn. 2.03.',
-    kilde: ['EN13803'],
-    status: 'antaget',
+    note: 'Delstrækninger der jævnligt befares med langsomt kørende godstog: h = 11,8·Vg²/R + E med E ≤ 110 mm (formel 9). Ved nyanlæg, større ombygninger og opgraderinger også langsomt kørende passagertog.',
+    kilde: ['SR87 afsn. 2.03.4 formel (9)'],
+    status: 'verificeret',
   },
+
   dhdtMax: {
     label: 'Overhøjdeændring dh/dt',
-    normal: 28,
-    undtagelse: 46,
+    normal: 50,
+    undtagelse: 70,
     unit: 'mm/s',
-    note: 'Svarer til rampe 1:(10·V) og 1:(6·V). Kontrollér mod Sporregler afsn. 2.06.',
-    kilde: ['SR87 afsn. 2.06', 'EN13803'],
-    status: 'antaget',
+    note: 'Retlinet overhøjderampe: Δh·V/(3,6·L) ≤ 50 mm/s (normal, formel 25); ønskeligt ≤ 35 mm/s (formel 24). Undtagelse ved sammenfaldende overgangskurve og rampe: 70 mm/s for V ≤ 200 og 60 mm/s for 200 < V ≤ 250 km/t (formel 26a/26b).',
+    kilde: ['SR87 afsn. 2.06.2–2.06.4'],
+    status: 'verificeret',
   },
+
   dIdtMax: {
     label: 'Ændring af overhøjdeunderskud dI/dt',
     normal: 55,
-    undtagelse: 70,
+    undtagelse: 90,
     unit: 'mm/s',
-    note: 'Bestemmende for overgangskurvens længde. Kontrollér mod Sporregler afsn. 2.05.',
-    kilde: ['SR87 afsn. 2.05', 'EN13803'],
-    status: 'antaget',
+    note: 'Klotoide: ΔI·V/(3,6·L) ≤ 55 mm/s for V ≤ 200 og 50 mm/s for 200 < V ≤ 250 km/t (normal, formel 15a/15b); undtagelse 90 hhv. 75 mm/s (formel 18/19). Overgangskurven skal mindst være 20 m.',
+    kilde: ['SR87 afsn. 2.05.2–2.05.3'],
+    status: 'verificeret',
   },
+
   dhdsMax: {
-    label: 'Stejleste rampe dh/ds',
-    normal: 2.5,
+    label: 'Rampestigning s',
+    normal: 2.0,
     undtagelse: 2.5,
-    unit: 'mm/m',
-    note: 'Svarer til 1:400 uanset hastighed. Kontrollér mod Sporregler afsn. 2.06.',
-    kilde: ['SR87 afsn. 2.06'],
-    status: 'antaget',
+    unit: '‰',
+    note: 'Retlinet overhøjderampe: s ≤ 2,0 ‰ (normal, 2.06.3); ved undtagelsesbestemmelserne s ≤ 2,5 ‰ (2.06.4).',
+    kilde: ['SR87 afsn. 2.06.3–2.06.4'],
+    status: 'verificeret',
   },
+
   rampeFaktor: {
-    label: 'Rampe 1:(k·V)',
-    normal: 10,
-    undtagelse: 6,
+    label: 'Ikke-sammenfaldende rampe 1:(k·V)',
+    normal: 8,
+    undtagelse: 5.6,
     unit: '',
-    note: 'Rampehældning afhængig af hastighed V [km/t]. Kontrollér mod Sporregler afsn. 2.06.',
-    kilde: ['SR87 afsn. 2.06'],
-    status: 'antaget',
+    note: 'Kun når rampen forlænges uden for overgangskurven (2.06.5): s ≤ 125/V ‰, dvs. 1:(8·V) (formel 28); særlige togsæt s ≤ 180/V ‰, dvs. 1:(5,6·V) (formel 28a). For sammenfaldende rampe og overgangskurve er dh/dt og s bestemmende.',
+    kilde: ['SR87 afsn. 2.06.5'],
+    status: 'verificeret',
   },
+
   stigningMax: {
     label: 'Stigning/fald i hovedspor',
     normal: 10,
@@ -191,6 +196,56 @@ export const BANEDANMARK: RuleSet = {
   },
   radiusRetSpor: 25000,
 };
+
+/* ---------------- hastighedsafhængige grænser (Sporregler 2.05–2.06) ---------------- */
+
+/** dh/dt for retlinet overhøjderampe: normal 50; undtagelse 70 (V ≤ 200) / 60 (200 < V ≤ 250) mm/s. */
+export function limitDhdt(rs: RuleSet, V: number): Limit {
+  return { ...rs.dhdtMax, undtagelse: V <= 200 ? rs.dhdtMax.undtagelse : 60 };
+}
+
+/** dI/dt i klotoide: normal 55/50, undtagelse 90/75 mm/s for V ≤ 200 / 200 < V ≤ 250. */
+export function limitDIdt(rs: RuleSet, V: number): Limit {
+  return V <= 200 ? rs.dIdtMax : { ...rs.dIdtMax, normal: 50, undtagelse: 75 };
+}
+
+/** Mindste overgangskurvelængde [m] (2.05.2). */
+export const MIN_OVERGANGSKURVE = 20;
+
+/** Fiktiv overgangskurvelængde = afstand mellem en personvogns boggiecentre (tillæg 2C). */
+export const FIKTIV_LAENGDE = 20;
+
+/** Fiktivt ryk dI/dt = ΔI·V / (3,6·20) [mm/s] ved spring i krumning/underskud uden overgangskurve. */
+export function fiktivtRyk(dI: number, V: number): number {
+  return (Math.abs(dI) * V) / (3.6 * FIKTIV_LAENGDE);
+}
+
+export type SporKlasse = 'hovedspor' | 'oevrige';
+
+/**
+ * Grænser for fiktivt ryk, når overgangskurven udelades (Sporregler 2.05.2–2.05.3):
+ *  - hovedspor og gennemgående togvejsspor: normal 28 mm/s (formel 15, V ≤ 200); undtagelse 135 mm/s (V ≤ 200, formel 20) / 75 mm/s (200 < V ≤ 250, formel 21)
+ *  - øvrige togvejsspor og sidespor: 71 mm/s (formel 17)
+ */
+export function limitFiktivtRyk(V: number, klasse: SporKlasse): Limit {
+  const base: Omit<Limit, 'normal' | 'undtagelse'> = {
+    label: 'Fiktivt ryk dI/dt = ΔI·V/(3,6·20)', unit: 'mm/s',
+    note: 'Spring i krumning uden overgangskurve (ret–kurve, ensvendte eller modvendte cirkelbuer). Formel (15) er her læst med den fiktive længde 20 m (tillæg 2C). Gælder ikke ind/ud af sporskiftekurver (2.04.6).',
+    kilde: ['SR87 afsn. 2.05.2–2.05.3, tillæg 2C'], status: 'verificeret',
+  };
+  if (klasse === 'oevrige') return { ...base, normal: 71, undtagelse: 71 };
+  if (V <= 200) return { ...base, normal: 28, undtagelse: 135 };
+  return { ...base, normal: 0, undtagelse: 75 };
+}
+
+/** Største tilladte spring ΔI ved fiktivt ryk (forudsætning for formel 20/21). */
+export function limitSpringI(V: number, Ifoer = Infinity, Iefter = Infinity): number {
+  if (V <= 40 && Math.abs(Ifoer) <= 75 && Math.abs(Iefter) <= 75) return 150;
+  if (V <= 60) return 130;
+  if (V <= 200) return 125;
+  if (V <= 230) return 85;
+  return 25;
+}
 
 /** Undtagelsesværdien for I afhænger af skinne, hastighed og togtype (Sporregler 2.03). */
 export function iUndtagelse(V: number, s: Pick<Settings, 'skinne' | 'saerligeTogsaet'>): number {

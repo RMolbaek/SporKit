@@ -2,7 +2,7 @@
  * Grundlæggende sporgeometriske formler.
  * Enheder: V [km/t], R [m], h/I/E [mm], L [m].
  */
-import type { RuleSet } from './rules';
+import { limitDhdt, limitDIdt, MIN_OVERGANGSKURVE, type RuleSet } from './rules';
 
 /**
  * Konstanten C i h_eq = C·V²/R  [mm·m·t²/km²].
@@ -94,7 +94,7 @@ export interface TransitionInput {
 }
 
 export interface TransitionCriterion {
-  id: 'dhdt' | 'dIdt' | 'dhds' | 'rampe';
+  id: 'dhdt' | 'dIdt' | 'dhds' | 'min';
   label: string;
   formel: string;
   normal: number;
@@ -105,34 +105,35 @@ export function transitionLengths(inp: TransitionInput, rs: RuleSet): Transition
   const v = inp.V / 3.6; // m/s
   const dh = Math.abs(inp.dh);
   const dI = Math.abs(inp.dI);
+  const lh = limitDhdt(rs, inp.V), lI = limitDIdt(rs, inp.V);
   return [
     {
       id: 'dhdt',
-      label: 'Overhøjdeændring pr. tid',
+      label: 'Rampestigningshastighed dh/dt',
       formel: 'L ≥ v·Δh / (dh/dt)',
-      normal: (v * dh) / rs.dhdtMax.normal,
-      undtagelse: (v * dh) / rs.dhdtMax.undtagelse,
+      normal: (v * dh) / lh.normal,
+      undtagelse: (v * dh) / lh.undtagelse,
     },
     {
       id: 'dIdt',
-      label: 'Ændring af manglende overhøjde pr. tid',
+      label: 'Ryk dI/dt (klotoide)',
       formel: 'L ≥ v·ΔI / (dI/dt)',
-      normal: (v * dI) / rs.dIdtMax.normal,
-      undtagelse: (v * dI) / rs.dIdtMax.undtagelse,
-    },
-    {
-      id: 'rampe',
-      label: 'Rampehældning 1:(k·V)',
-      formel: 'L ≥ Δh·k·V / 1000',
-      normal: (dh * rs.rampeFaktor.normal * inp.V) / 1000,
-      undtagelse: (dh * rs.rampeFaktor.undtagelse * inp.V) / 1000,
+      normal: (v * dI) / lI.normal,
+      undtagelse: (v * dI) / lI.undtagelse,
     },
     {
       id: 'dhds',
-      label: 'Stejleste rampe',
-      formel: 'L ≥ Δh / (dh/ds)max',
+      label: 'Rampestigning s',
+      formel: 'L ≥ Δh / s',
       normal: dh / rs.dhdsMax.normal,
       undtagelse: dh / rs.dhdsMax.undtagelse,
+    },
+    {
+      id: 'min',
+      label: 'Mindste overgangskurvelængde',
+      formel: 'L ≥ 20 m (2.05.2)',
+      normal: dh > 0 || dI > 0 ? MIN_OVERGANGSKURVE : 0,
+      undtagelse: dh > 0 || dI > 0 ? MIN_OVERGANGSKURVE : 0,
     },
   ];
 }

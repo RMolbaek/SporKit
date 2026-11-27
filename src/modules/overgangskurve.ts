@@ -1,4 +1,4 @@
-import { BANEDANMARK as rs, vurder, samletStatus } from '../core/rules';
+import { BANEDANMARK as rs, vurder, samletStatus, limitDhdt, limitDIdt, MIN_OVERGANGSKURVE, type Status } from '../core/rules';
 import {
   cantDeficiency, transitionLengths, clothoid, roundTo, clothoidParamCompound, rampTwist,
 } from '../core/formulas';
@@ -61,12 +61,11 @@ export const overgangskurve: Module = {
       const dhdt = (v * Math.abs(dh)) / L;
       const dIdt = (v * Math.abs(dI)) / L;
       const dhds = Math.abs(dh) / L;
-      const sDh = vurder(dhdt, rs.dhdtMax);
-      const sDi = vurder(dIdt, rs.dIdtMax);
+      const lDh = limitDhdt(rs, st.V), lDi = limitDIdt(rs, st.V);
+      const sDh = vurder(dhdt, lDh);
+      const sDi = vurder(dIdt, lDi);
       const sDs = vurder(dhds, rs.dhdsMax);
-      const nKrav = rs.rampeFaktor.normal * st.V;
-      const nUndt = rs.rampeFaktor.undtagelse * st.V;
-      const sRampe = g.rampe >= nKrav - 1e-6 ? 'ok' : g.rampe >= nUndt - 1e-6 ? 'undtagelse' : 'overskredet';
+      const sRampe: Status = L >= MIN_OVERGANGSKURVE - 1e-9 ? 'ok' : 'overskredet';
       const total = samletStatus([sDh, sDi, sDs, sRampe]);
       const tw = [3, 6, 9, 12, 15].map((b) => ({ b, ...rampTwist(dh, L, b) }));
       const kk = kvalitetsklasse(st.V);
@@ -105,10 +104,10 @@ export const overgangskurve: Module = {
         ${results([
           { symbol: 'Δh', label: 'Overhøjdeændring', value: fmt(dh), unit: 'mm', sub: `${fmt(h1)} → ${fmt(st.h)} mm` },
           { symbol: 'ΔI', label: 'Ændring af underskud', value: fmt(dI), unit: 'mm', sub: `${fmt(I1)} → ${fmt(I2)} mm` },
-          { symbol: 'dh/dt', label: 'Overhøjdeændring pr. tid', value: fmt(dhdt, 1), unit: 'mm/s', status: sDh, sub: graense(rs.dhdtMax) },
-          { symbol: 'dI/dt', label: 'Underskudsændring pr. tid', value: fmt(dIdt, 1), unit: 'mm/s', status: sDi, sub: graense(rs.dIdtMax) },
-          { symbol: '1:n', label: 'Rampehældning', value: Number.isFinite(g.rampe) ? '1:' + fmt(g.rampe) : '–', unit: '', status: sRampe,
-            sub: `krav 1:${fmt(nKrav)} (undt. 1:${fmt(nUndt)}), stejlest 1:400` },
+          { symbol: 'dh/dt', label: 'Overhøjdeændring pr. tid', value: fmt(dhdt, 1), unit: 'mm/s', status: sDh, sub: graense(lDh) },
+          { symbol: 'dI/dt', label: 'Underskudsændring pr. tid', value: fmt(dIdt, 1), unit: 'mm/s', status: sDi, sub: graense(lDi) },
+          { symbol: 's', label: 'Rampestigning', value: fmt(dhds, 2), unit: '‰', status: sDs,
+            sub: `${Number.isFinite(g.rampe) ? `1:${fmt(g.rampe)} · ` : ''}≤ 2,0 ‰ (undt. 2,5 ‰) · L ≥ 20 m` },
           { symbol: 'v<sub>3</sub>', label: 'Vridning fra rampe, 3 m base', value: fmt(tw[0].overBase, 2), unit: 'mm', sub: `${fmt(tw[0].mmPrM, 3)} mm/m` },
         ])}
         <h3>Klotoidens geometri</h3>
@@ -142,7 +141,7 @@ export const overgangskurve: Module = {
           { label: 'Underskud i bue', formel: 'I₂ = C·V²/R₂ − h₂', indsat: `11,80·${st.V}²/${fmt(st.R)} − ${st.h}`, resultat: `${fmt(I2, 1)} mm` },
           { label: 'Overhøjdeændring', formel: 'Δh = h₂ − h₁', indsat: `${st.h} − ${h1}`, resultat: `${fmt(dh, 1)} mm` },
           { label: 'Underskudsændring', formel: 'ΔI = I₂ − I₁', indsat: `${fmt(I2, 1)} − ${fmt(I1, 1)}`, resultat: `${fmt(dI, 1)} mm` },
-          ...krit.map((k) => ({ label: k.label, formel: k.formel, indsat: k.id === 'dhdt' ? `${fmt(v, 2)}·${fmt(Math.abs(dh), 1)}/${rs.dhdtMax.normal}` : k.id === 'dIdt' ? `${fmt(v, 2)}·${fmt(Math.abs(dI), 1)}/${rs.dIdtMax.normal}` : k.id === 'rampe' ? `${fmt(Math.abs(dh), 1)}·${rs.rampeFaktor.normal}·${st.V}/1000` : `${fmt(Math.abs(dh), 1)}/${rs.dhdsMax.normal}`, resultat: `${fmt(k.normal, 1)} m` })),
+          ...krit.map((k) => ({ label: k.label, formel: k.formel, indsat: k.id === 'dhdt' ? `${fmt(v, 2)}·${fmt(Math.abs(dh), 1)}/${lDh.normal}` : k.id === 'dIdt' ? `${fmt(v, 2)}·${fmt(Math.abs(dI), 1)}/${lDi.normal}` : k.id === 'min' ? '20' : `${fmt(Math.abs(dh), 1)}/${rs.dhdsMax.normal}`, resultat: `${fmt(k.normal, 1)} m` })),
           { label: 'Klotoideparameter', formel: fraLige ? 'A = √(R·L)' : 'A = √(L/|1/R₂−1/R₁|)', indsat: fraLige ? `√(${fmt(st.R)}·${fmt(L)})` : `√(${fmt(L)}/|1/${fmt(st.R)}−1/${fmt(st.R1)}|)`, resultat: `${fmt(A, 1)} m` },
           ...(fraLige ? [
             { label: 'Tilbageflytning', formel: 'p ≈ L²/(24R)', indsat: `${fmt(L)}²/(24·${fmt(st.R)})`, resultat: `${fmt(g.p * 1000, 0)} mm` },
@@ -151,10 +150,10 @@ export const overgangskurve: Module = {
           { label: 'Vridning fra rampe', formel: 'v = Δh/L · b', indsat: `${fmt(Math.abs(dh), 1)}/${fmt(L)}·3`, resultat: `${fmt(tw[0].overBase, 2)} mm / 3 m` },
         ],
         checks: [
-          { label: 'Overhøjdeændring dh/dt', value: `${fmt(dhdt, 1)} mm/s`, graense: graense(rs.dhdtMax), status: sDh, kilde: kildeTekst(rs.dhdtMax) },
-          { label: 'Underskudsændring dI/dt', value: `${fmt(dIdt, 1)} mm/s`, graense: graense(rs.dIdtMax), status: sDi, kilde: kildeTekst(rs.dIdtMax) },
-          { label: 'Rampehældning', value: Number.isFinite(g.rampe) ? `1:${fmt(g.rampe)}` : '–', graense: `1:${fmt(nKrav)} / 1:${fmt(nUndt)}`, status: sRampe, kilde: kildeTekst(rs.rampeFaktor) },
-          { label: 'Stejleste rampe dh/ds', value: `${fmt(dhds, 2)} mm/m`, graense: graense(rs.dhdsMax), status: sDs, kilde: kildeTekst(rs.dhdsMax) },
+          { label: 'Overhøjdeændring dh/dt', value: `${fmt(dhdt, 1)} mm/s`, graense: graense(lDh), status: sDh, kilde: kildeTekst(rs.dhdtMax) },
+          { label: 'Underskudsændring dI/dt', value: `${fmt(dIdt, 1)} mm/s`, graense: graense(lDi), status: sDi, kilde: kildeTekst(rs.dIdtMax) },
+          { label: 'Overgangskurvens længde', value: `${fmt(L, 1)} m (rampe 1:${fmt(g.rampe)})`, graense: '≥ 20 m', status: sRampe, kilde: 'SR87 afsn. 2.05.2' },
+          { label: 'Rampestigning s', value: `${fmt(dhds, 2)} ‰`, graense: graense(rs.dhdsMax), status: sDs, kilde: kildeTekst(rs.dhdsMax) },
           ...bnRows.map((r) => ({ ...r, label: `BN1-38: ${r.label}` })),
         ],
         noter: [
